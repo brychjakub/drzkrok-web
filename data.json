@@ -1,0 +1,119 @@
+{
+  "items": [
+    {
+      "title": "Koupelna",
+      "stateGroup": "now",
+      "state": "skoro hotovo, čekám na finální cenu",
+      "next": "po faktuře rozhodnout, odkud zaplatit zbytek",
+      "note": "už zaplaceno 44 800 Kč, finální cena může být výrazně vyšší",
+      "links": [],
+      "category": "domov",
+      "status": "teď"
+    },
+    {
+      "title": "Finance",
+      "stateGroup": "now",
+      "state": "čeká se na výplatu a cenu koupelny",
+      "next": "aktualizovat přehled účtů a rezervu",
+      "note": "nesahat na investice, pokud to nebude nutné",
+      "links": [],
+      "category": "peníze",
+      "status": "teď"
+    },
+    {
+      "title": "Práce",
+      "stateGroup": "now",
+      "state": "korporátní tempo je pomalé",
+      "next": "držet se v chodu, občas mini skill-up",
+      "note": "cílem není vyrábět si zbytečný stres",
+      "links": [],
+      "category": "práce",
+      "status": "teď"
+    },
+    {
+      "title": "Rodina",
+      "stateGroup": "now",
+      "state": "dobrý",
+      "next": "nekomplikovat",
+      "note": "hlavní kotva, ne projekt k optimalizaci",
+      "links": [],
+      "category": "život",
+      "status": "teď"
+    },
+    {
+      "title": "Spendee automatizace",
+      "stateGroup": "later",
+      "state": "nápad",
+      "next": "zatím neřešit, jen si nechat možnost",
+      "note": "riziko je udělat z toho zbytečně velký systém",
+      "links": [],
+      "category": "finance",
+      "status": "později"
+    },
+    {
+      "title": "Pevný PC",
+      "stateGroup": "later",
+      "state": "Ubuntu desktop má problém s rozlišením a internetem",
+      "next": "vyřešit až bude reálně potřeba",
+      "note": "nepálit na tom čas, pokud není akutní",
+      "links": [],
+      "category": "technika",
+      "status": "později"
+    },
+    {
+      "title": "Japonština",
+      "stateGroup": "later",
+      "state": "dlouhodobé učení",
+      "next": "krátké lekce, žádný tlak",
+      "note": "cíl N5, ale hlavně pravidelnost",
+      "links": [],
+      "category": "učení",
+      "status": "později"
+    },
+    {
+      "title": "HejaBoys admin",
+      "stateGroup": "later",
+      "state": "možný budoucí nápad",
+      "next": "řešit jen pokud bude potřeba spravovat obsah častěji",
+      "note": "web je teď hotový",
+      "links": [],
+      "category": "web",
+      "status": "později"
+    },
+    {
+      "title": "HejaBoys web",
+      "stateGroup": "done",
+      "state": "hotovo",
+      "next": "neřešit, dokud není potřeba",
+      "note": "neotevírat hotovou věc jen z nudy",
+      "links": [],
+      "category": "web",
+      "status": "hotovo"
+    },
+    {
+      "title": "Termux",
+      "stateGroup": "done",
+      "state": "nastavený",
+      "next": "používat jen když má praktický účel",
+      "note": "nehledat další nekonečné ladění",
+      "links": [],
+      "category": "technika",
+      "status": "hotovo"
+    },
+    {
+      "title": "Doména drzkrok.cz",
+      "stateGroup": "done",
+      "state": "zaplacená",
+      "next": "použít pro tento dashboard",
+      "note": "jednoduchá startovací stránka, ne další velký projekt",
+      "links": [
+        {
+          "label": "drzkrok.cz",
+          "url": "https://drzkrok.cz"
+        }
+      ],
+      "category": "doména",
+      "status": "hotovo"
+    }
+  ]
+}
