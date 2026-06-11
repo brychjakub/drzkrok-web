@@ -586,8 +586,12 @@ select {
 }
 
 .quick-edit-toggle {
-  box-shadow: 0 16px 40px rgba(43, 34, 25, 0.22);
+  background: rgba(255, 250, 241, 0.94);
+  border: 1px solid rgba(43, 34, 25, 0.14);
+  box-shadow: 0 10px 28px rgba(43, 34, 25, 0.14);
+  color: var(--text);
   justify-self: end;
+  padding-inline: 0.95rem;
 }
 
 .quick-edit-panel {
@@ -636,7 +640,7 @@ select {
 .quick-actions {
   display: grid;
   gap: 0.6rem;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .quick-editor details {
@@ -672,4 +676,61 @@ body.editing .media-section {
   .quick-actions {
     grid-template-columns: 1fr;
   }
+}
+
+.image-edit-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.image-edit-card {
+  border: 1px solid rgba(43, 34, 25, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.64);
+  display: grid;
+  gap: 0.7rem;
+  padding: 0.85rem;
+}
+
+.image-edit-card img,
+.image-placeholder {
+  aspect-ratio: 16 / 10;
+  border-radius: 14px;
+  object-fit: cover;
+  width: 100%;
+}
+
+.image-placeholder {
+  align-items: center;
+  background: rgba(43, 34, 25, 0.08);
+  color: var(--muted);
+  display: grid;
+  font-weight: 800;
+  justify-items: center;
+}
+
+.small-danger-button {
+  border: 0;
+  border-radius: 999px;
+  background: rgba(157, 47, 47, 0.1);
+  color: var(--error);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0.7rem 0.85rem;
+}
+
+.quick-auth-fields {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.quick-auth-status {
+  border-radius: 14px;
+  background: rgba(43, 34, 25, 0.06);
+  color: var(--muted);
+  font-size: 0.9rem;
+  margin: 0;
+  padding: 0.7rem 0.8rem;
 }

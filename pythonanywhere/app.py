@@ -67,7 +67,7 @@ else:
 def add_cors(response):
     response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
     response.headers["Access-Control-Allow-Headers"] = "Content-Type"
-    response.headers["Access-Control-Allow-Methods"] = "GET, PUT, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Methods"] = "GET, PUT, POST, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
@@ -250,6 +250,11 @@ def dashboard():
         return make_response("", 204)
 
     if request.method == "GET":
+        if REQUIRE_LOGIN_TO_VIEW:
+            auth_error = require_authorized()
+            if auth_error:
+                return auth_error
+
         return jsonify(load_data())
 
     auth_error = require_authorized()
@@ -304,8 +309,26 @@ def uploads():
     return jsonify({"label": label, "url": public_url, "filename": filename})
 
 
-@app.route("/uploads/<path:filename>", methods=["GET"])
+@app.route("/uploads/<path:filename>", methods=["GET", "DELETE", "OPTIONS"])
 def uploaded_file(filename):
+    if request.method == "OPTIONS":
+        return make_response("", 204)
+
+    if request.method == "DELETE":
+        auth_error = require_authorized()
+        if auth_error:
+            return auth_error
+
+        safe_name = secure_filename(Path(filename).name)
+        if not safe_name:
+            return make_response("Neplatný název souboru.", 400)
+
+        target = UPLOAD_DIR / safe_name
+        if target.exists():
+            target.unlink()
+
+        return jsonify({"deleted": True, "filename": safe_name})
+
     if REQUIRE_LOGIN_TO_VIEW:
         auth_error = require_authorized()
         if auth_error:

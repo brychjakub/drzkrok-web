@@ -5,6 +5,8 @@ const passwordInput = document.querySelector('#admin-password');
 const editor = document.querySelector('#json-editor');
 const message = document.querySelector('#admin-message');
 const loginButton = document.querySelector('#login-button');
+const authStatus = document.querySelector('#admin-auth-status');
+const authFields = document.querySelector('#admin-auth-fields');
 const loadButton = document.querySelector('#load-button');
 const saveButton = document.querySelector('#save-button');
 const formatButton = document.querySelector('#format-button');
@@ -16,6 +18,8 @@ const uploadResult = document.querySelector('#upload-result');
 
 const savedApiUrl = localStorage.getItem('drzkrokApiBaseUrl');
 const savedUsername = localStorage.getItem('drzkrokAdminUsername');
+let isAuthenticated = false;
+let authConfigured = false;
 
 apiInput.value = savedApiUrl || adminConfig.apiBaseUrl || '';
 usernameInput.value = savedUsername || '';
@@ -84,6 +88,42 @@ async function fetchBackend(path, options = {}) {
   return response.json();
 }
 
+
+function updateAuthUi() {
+  if (!authStatus || !authFields) return;
+
+  if (!authConfigured) {
+    authStatus.textContent = 'Přihlášení není nastavené na backendu.';
+    authFields.hidden = false;
+    loginButton.hidden = false;
+    return;
+  }
+
+  if (isAuthenticated) {
+    authStatus.textContent = 'Přihlášeno. Heslo znovu zadávat nemusíš.';
+    authFields.hidden = true;
+    loginButton.hidden = true;
+    return;
+  }
+
+  authStatus.textContent = 'Pro ukládání a upload se přihlaš.';
+  authFields.hidden = false;
+  loginButton.hidden = false;
+}
+
+async function refreshSession() {
+  try {
+    const session = await fetchBackend('/api/session');
+    isAuthenticated = Boolean(session.authenticated);
+    authConfigured = Boolean(session.configured);
+  } catch (_error) {
+    isAuthenticated = false;
+    authConfigured = false;
+  }
+
+  updateAuthUi();
+}
+
 function saveSettings() {
   localStorage.setItem('drzkrokApiBaseUrl', cleanApiUrl());
   localStorage.setItem('drzkrokAdminUsername', usernameInput.value.trim());
@@ -107,6 +147,9 @@ async function login() {
       body: JSON.stringify({ username, password }),
     });
 
+    isAuthenticated = true;
+    authConfigured = true;
+    updateAuthUi();
     saveSettings();
     setMessage('Přihlášeno. Teď můžeš ukládat změny a nahrávat obrázky.');
   } catch (error) {
@@ -131,6 +174,14 @@ async function saveData() {
   setMessage('Ukládám data…');
 
   try {
+    if (!isAuthenticated) {
+      await refreshSession();
+    }
+
+    if (authConfigured && !isAuthenticated) {
+      throw new Error('Nejdřív se přihlaš.');
+    }
+
     const payload = validatePayload(JSON.parse(editor.value));
     const data = await fetchBackend('/api/dashboard', {
       method: 'PUT',
@@ -151,6 +202,14 @@ async function uploadImage() {
   uploadResult.textContent = '';
 
   try {
+    if (!isAuthenticated) {
+      await refreshSession();
+    }
+
+    if (authConfigured && !isAuthenticated) {
+      throw new Error('Nejdřív se přihlaš.');
+    }
+
     const file = imageFileInput.files[0];
 
     if (!file) {
@@ -169,6 +228,7 @@ async function uploadImage() {
     const imageSnippet = {
       label: result.label,
       url: result.url,
+      filename: result.filename || '',
       note: '',
     };
 
@@ -195,6 +255,8 @@ saveButton.addEventListener('click', saveData);
 formatButton.addEventListener('click', formatJson);
 saveSettingsButton.addEventListener('click', saveSettings);
 uploadButton.addEventListener('click', uploadImage);
+
+refreshSession();
 
 if (cleanApiUrl() || adminConfig.useBackend !== false) {
   loadData();

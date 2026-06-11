@@ -16,6 +16,9 @@ let dashboardData = null;
 let activeProject = null;
 let editMode = false;
 let saveTimer = null;
+let isAuthenticated = false;
+let authConfigured = false;
+let quickEditorPanel = null;
 
 function setMessage(text, type = 'info') {
   message.textContent = text;
@@ -85,9 +88,28 @@ function renderLinks(links = [], path = '') {
 
 function renderImages(images = []) {
   if (editMode) {
+    const editableImages = Array.isArray(images) ? images : [];
+    const imageEditor = editableImages
+      .map((image, index) => {
+        const url = escapeHtml(image.url || '');
+        const label = escapeHtml(image.label || 'Obrázek');
+        const note = escapeHtml(image.note || '');
+
+        return `
+          <article class="image-edit-card">
+            ${url ? `<img src="${url}" alt="${label}" loading="lazy" />` : '<div class="image-placeholder">Bez náhledu</div>'}
+            <label class="inline-label">Popisek<input data-edit-path="image.${index}.label" value="${label}" /></label>
+            <label class="inline-label">Poznámka<input data-edit-path="image.${index}.note" value="${note}" /></label>
+            <label class="inline-label">URL<input data-edit-path="image.${index}.url" value="${url}" /></label>
+            <button class="small-danger-button" type="button" data-remove-image="${index}">Smazat z projektu</button>
+          </article>
+        `;
+      })
+      .join('');
+
     return `
-      <textarea class="inline-textarea inline-json media-json" data-edit-path="project.images" aria-label="Obrázky jako JSON">${escapeHtml(JSON.stringify(Array.isArray(images) ? images : [], null, 2))}</textarea>
-      <p class="edit-hint">Obrázek nahraješ tlačítkem „Upravit“ vpravo dole. Výsledek se sem dá vložit jako JSON.</p>
+      ${imageEditor ? `<div class="image-edit-grid">${imageEditor}</div>` : '<p class="empty-links">Zatím žádné obrázky ani screenshoty.</p>'}
+      <p class="edit-hint">Obrázek přidáš v panelu „Upravit“. Tlačítko „Smazat z projektu“ ho odstraní z dashboardu po příštím uložení.</p>
     `;
   }
 
@@ -382,6 +404,15 @@ function applyEdit(path, value, isJson = false) {
     const item = activeProject.items[Number(indexText)];
     if (!item) return;
     item[key] = finalValue;
+    return;
+  }
+
+  if (path.startsWith('image.')) {
+    const [, indexText, key] = path.split('.');
+    const images = Array.isArray(activeProject.images) ? activeProject.images : [];
+    const image = images[Number(indexText)];
+    if (!image) return;
+    image[key] = finalValue;
   }
 }
 
@@ -397,6 +428,57 @@ function bindInlineEditing() {
       if (path.endsWith('stateGroup')) renderProject(activeProject);
     });
   });
+
+  document.querySelectorAll('[data-remove-image]').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const index = Number(button.dataset.removeImage);
+      if (!Array.isArray(activeProject.images) || !activeProject.images[index]) return;
+
+      const image = activeProject.images[index];
+      const filename = getUploadFilename(image);
+
+      if (filename) {
+        try {
+          await deleteUploadedFile(filename);
+        } catch (error) {
+          setMessage(`Obrázek odeberu z projektu, ale soubor se nepodařilo smazat: ${error.message}`);
+        }
+      }
+
+      activeProject.images.splice(index, 1);
+      renderProject(activeProject);
+      setMessage('Obrázek je odebraný z projektu. Klikni „Uložit“, aby změna zůstala uložená.');
+    });
+  });
+}
+
+function getUploadFilename(image = {}) {
+  if (image.filename) return image.filename;
+
+  try {
+    const url = new URL(image.url, window.location.origin);
+    if (!url.pathname.includes('/uploads/')) return '';
+    return decodeURIComponent(url.pathname.split('/').pop() || '');
+  } catch (_error) {
+    return '';
+  }
+}
+
+async function deleteUploadedFile(filename) {
+  if (!filename) return;
+
+  if (shouldUseBackend && !isAuthenticated) {
+    await refreshAuthStatus();
+  }
+
+  if (shouldUseBackend && authConfigured && !isAuthenticated) {
+    throw new Error('Nejdřív se přihlaš.');
+  }
+
+  const base = getEditorApiBase(quickEditorPanel);
+  await fetchJson(`${base}/uploads/${encodeURIComponent(filename)}`, 'Smazání obrázku', {
+    method: 'DELETE',
+  });
 }
 
 function createInlineEditor() {
@@ -408,10 +490,13 @@ function createInlineEditor() {
       <h2>Rychlá úprava</h2>
       <p>Zapni úpravy, klikni do textu na stránce, přepiš ho a ulož.</p>
       <label>Backend URL<input id="quick-api-url" value="${escapeHtml(apiBaseUrl)}" placeholder="prázdné = stejná doména" /></label>
-      <label>Uživatelské jméno<input id="quick-username" autocomplete="username" placeholder="admin" /></label>
-      <label>Heslo<input id="quick-password" type="password" autocomplete="current-password" /></label>
-      <div class="quick-actions">
+      <p id="quick-auth-status" class="quick-auth-status">Kontroluju přihlášení…</p>
+      <div id="quick-auth-fields" class="quick-auth-fields">
+        <label>Uživatelské jméno<input id="quick-username" autocomplete="username" placeholder="admin" /></label>
+        <label>Heslo<input id="quick-password" type="password" autocomplete="current-password" /></label>
         <button id="quick-login" type="button">Přihlásit</button>
+      </div>
+      <div class="quick-actions">
         <button id="quick-edit-mode" type="button">Zapnout úpravy</button>
         <button id="quick-save" type="button">Uložit</button>
       </div>
@@ -438,15 +523,27 @@ function createInlineEditor() {
   usernameInput.value = localStorage.getItem('drzkrokInlineUsername') || '';
   apiInput.value = localStorage.getItem('drzkrokInlineApiUrl') || apiBaseUrl;
 
-  toggle.addEventListener('click', () => {
+  toggle.addEventListener('click', async () => {
     editPanel.hidden = !editPanel.hidden;
+    if (!editPanel.hidden) {
+      await refreshAuthStatus(panel);
+    }
   });
 
   loginButton.addEventListener('click', async () => {
     await loginEditor(panel);
   });
 
-  modeButton.addEventListener('click', () => {
+  modeButton.addEventListener('click', async () => {
+    if (shouldUseBackend && !isAuthenticated) {
+      await refreshAuthStatus(panel);
+    }
+
+    if (shouldUseBackend && authConfigured && !isAuthenticated) {
+      setMessage('Nejdřív se přihlaš. Pak půjde ukládat změny.');
+      return;
+    }
+
     editMode = !editMode;
     modeButton.textContent = editMode ? 'Vypnout úpravy' : 'Zapnout úpravy';
     document.body.classList.toggle('editing', editMode);
@@ -460,6 +557,53 @@ function createInlineEditor() {
   uploadButton.addEventListener('click', async () => {
     await uploadImage(panel);
   });
+
+  quickEditorPanel = panel;
+  refreshAuthStatus(panel);
+}
+
+function updateAuthPanel(panel) {
+  const status = panel.querySelector('#quick-auth-status');
+  const fields = panel.querySelector('#quick-auth-fields');
+
+  if (!status || !fields) return;
+
+  if (!shouldUseBackend) {
+    status.textContent = 'Backend je vypnutý, změny půjdou jen lokálně.';
+    fields.hidden = true;
+    return;
+  }
+
+  if (!authConfigured) {
+    status.textContent = 'Přihlášení není nastavené na backendu.';
+    fields.hidden = false;
+    return;
+  }
+
+  if (isAuthenticated) {
+    status.textContent = 'Přihlášeno. Můžeš upravovat a ukládat.';
+    fields.hidden = true;
+    return;
+  }
+
+  status.textContent = 'Pro ukládání se přihlaš.';
+  fields.hidden = false;
+}
+
+async function refreshAuthStatus(panel = quickEditorPanel) {
+  if (!shouldUseBackend || !panel) return;
+
+  try {
+    const base = getEditorApiBase(panel);
+    const session = await fetchJson(`${base}/api/session`, 'Session');
+    isAuthenticated = Boolean(session.authenticated);
+    authConfigured = Boolean(session.configured);
+  } catch (_error) {
+    isAuthenticated = false;
+    authConfigured = false;
+  }
+
+  updateAuthPanel(panel);
 }
 
 function getEditorApiBase(panel) {
@@ -492,6 +636,9 @@ async function loginEditor(panel) {
       body: JSON.stringify({ username, password }),
     });
 
+    isAuthenticated = true;
+    authConfigured = true;
+    updateAuthPanel(panel);
     setMessage('Přihlášeno. Teď můžeš upravovat, ukládat a nahrávat obrázky.');
   } catch (error) {
     setMessage(`Přihlášení selhalo: ${error.message}`, 'error');
@@ -503,6 +650,14 @@ async function saveDashboard(panel) {
   setMessage('Ukládám změny…');
 
   try {
+    if (shouldUseBackend && !isAuthenticated) {
+      await refreshAuthStatus(panel);
+    }
+
+    if (shouldUseBackend && authConfigured && !isAuthenticated) {
+      throw new Error('Nejdřív se přihlaš.');
+    }
+
     const base = getEditorApiBase(panel);
     const saved = await fetchJson(`${base}/api/dashboard`, 'Backend', {
       method: 'PUT',
@@ -524,6 +679,14 @@ async function uploadImage(panel) {
   setMessage('Nahrávám obrázek…');
 
   try {
+    if (shouldUseBackend && !isAuthenticated) {
+      await refreshAuthStatus(panel);
+    }
+
+    if (shouldUseBackend && authConfigured && !isAuthenticated) {
+      throw new Error('Nejdřív se přihlaš.');
+    }
+
     const fileInput = panel.querySelector('#quick-image-file');
     const file = fileInput.files[0];
     if (!file) throw new Error('Vyber obrázek nebo screenshot.');
@@ -539,7 +702,7 @@ async function uploadImage(panel) {
     });
 
     activeProject.images = Array.isArray(activeProject.images) ? activeProject.images : [];
-    activeProject.images.push({ label: result.label, url: result.url, note: '' });
+    activeProject.images.push({ label: result.label, url: result.url, filename: result.filename || '', note: '' });
     refreshDashboard(dashboardData);
     setMessage('Obrázek nahraný a přidaný do projektu. Nezapomeň kliknout Uložit.');
   } catch (error) {

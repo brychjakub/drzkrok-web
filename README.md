@@ -261,25 +261,27 @@ Když se neukáže `{"ok": true}`, otevři na PythonAnywhere error log v zálož
 ## Jak upravovat přímo na stránce
 
 1. Otevři dashboard.
-2. Vpravo dole klikni **Upravit**.
-3. Vyplň **uživatelské jméno a heslo** a klikni **Přihlásit**.
+2. Vpravo dole klikni **Upravit**. Panel je schovaný, dokud ho sám neotevřeš.
+3. Pokud už jsi přihlášený přes chráněnou stránku, další přihlášení se nezobrazuje. Když přihlášený nejsi, vyplň **uživatelské jméno a heslo** a klikni **Přihlásit**.
 4. Klikni **Zapnout úpravy**.
 5. Klikni přímo do názvu, popisku, termínu, místa, stavů nebo poznámek a přepiš text.
 6. Pro mapu a rychlé odkazy použij pole v horní projektové kartě.
-7. Pro odkazy a obrázky se používá jednoduchý JSON, aby to zůstalo malé a rychlé.
+7. Obrázky se v edit módu zobrazí jako jednotlivé karty. Každou můžeš přepsat nebo tlačítkem **Smazat z projektu** odebrat.
 8. Klikni **Uložit**.
 
-## Jak nahrát obrázek / screenshot přímo na stránce
+## Jak nahrát nebo smazat obrázek / screenshot přímo na stránce
 
 1. Vpravo dole klikni **Upravit**.
-2. Vyplň uživatelské jméno a heslo a klikni **Přihlásit**.
+2. Pokud nejsi přihlášený, přihlaš se jménem a heslem.
 3. Rozklikni **Nahrát obrázek**.
 4. Vyber soubor.
 5. Doplníš popisek.
 6. Klikni **Nahrát a přidat do projektu**.
 7. Klikni **Uložit**.
 
-Obrázek se uloží do `pythonanywhere/storage/uploads/` uvnitř `drzkrok-web`, takže ho `git pull` nemaže.
+Když chceš obrázek smazat, zapni edit mód, u obrázku klikni **Smazat z projektu** a potom klikni **Uložit**. Pokud jde o obrázek nahraný přes tento backend, pokusí se aplikace smazat i soubor z `pythonanywhere/storage/uploads/`.
+
+Obrázky se ukládají do `pythonanywhere/storage/uploads/` uvnitř `drzkrok-web`, takže je `git pull` nemaže.
 
 ## Jak udělat nový projekt a starý schovat
 
