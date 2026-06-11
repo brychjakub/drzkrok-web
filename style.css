@@ -36,6 +36,34 @@ a {
   font: inherit;
 }
 
+[hidden] {
+  display: none !important;
+}
+
+button,
+a,
+summary {
+  -webkit-tap-highlight-color: rgba(223, 139, 78, 0.22);
+}
+
+button {
+  touch-action: manipulation;
+}
+
+button:hover,
+.quick-edit-toggle:hover,
+.quick-editor button:hover,
+.small-danger-button:hover {
+  transform: translateY(-1px);
+}
+
+button:active,
+.quick-edit-toggle:active,
+.quick-editor button:active,
+.small-danger-button:active {
+  transform: translateY(0);
+}
+
 .page-shell {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
@@ -583,6 +611,7 @@ select {
   font: inherit;
   font-weight: 800;
   padding: 0.85rem 1rem;
+  transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
 }
 
 .quick-edit-toggle {
@@ -719,6 +748,7 @@ body.editing .media-section {
   font: inherit;
   font-weight: 800;
   padding: 0.7rem 0.85rem;
+  transition: transform 150ms ease, background-color 150ms ease;
 }
 
 .quick-auth-fields {
