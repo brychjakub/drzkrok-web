@@ -136,16 +136,33 @@ cd /home/tvojeuzivatelskejmeno/mysite/drzkrok-web
 python3 -m pip install --user -r pythonanywhere/requirements.txt
 ```
 
-### 4. Nastav tajný token
+### 4. Nastav přihlášení jménem a heslem
 
-Nejjednodušší varianta na PythonAnywhere je použít environment proměnnou v WSGI souboru:
+Stránka se nebude zapisovat přes žádný ručně opisovaný token. Backend používá normální přihlášení: **uživatelské jméno + heslo + serverová session cookie**. Stejné přihlášení může chránit i celé zobrazení dashboardu.
 
-```python
-import os
-os.environ["DRZKROK_ADMIN_TOKEN"] = "sem-dej-dlouhy-tajny-token"
+Heslo neukládej do kódu v otevřené podobě. Do WSGI dáš jen hash hesla. Nejdřív si v PythonAnywhere Bash konzoli vygeneruj hash hesla a secret pro session:
+
+```bash
+cd /home/tvojeuzivatelskejmeno/mysite/drzkrok-web
+python3 - <<'PY'
+import getpass
+import secrets
+from werkzeug.security import generate_password_hash
+
+password = getpass.getpass('Zadej nové admin heslo: ')
+print('DRZKROK_ADMIN_PASSWORD_HASH=' + generate_password_hash(password))
+print('DRZKROK_SESSION_SECRET=' + secrets.token_urlsafe(48))
+PY
 ```
 
-Token budeš zadávat do editace na stránce. Kdo ho nemá, nemůže ukládat.
+Výstup bude vypadat zhruba takhle:
+
+```text
+DRZKROK_ADMIN_PASSWORD_HASH=scrypt:32768:8:1$...
+DRZKROK_SESSION_SECRET=dlouhy-nahodny-retezec...
+```
+
+Tyhle dvě hodnoty si zkopíruješ do WSGI souboru společně s uživatelským jménem. Pokud chceš chránit i samotné zobrazení dashboardu, nech ve WSGI `DRZKROK_REQUIRE_LOGIN_TO_VIEW = "true"`.
 
 ### 5. Nastav WSGI
 
@@ -156,7 +173,10 @@ import os
 import sys
 from pathlib import Path
 
-os.environ["DRZKROK_ADMIN_TOKEN"] = "sem-dej-dlouhy-tajny-token"
+os.environ["DRZKROK_ADMIN_USERNAME"] = "admin"
+os.environ["DRZKROK_ADMIN_PASSWORD_HASH"] = "sem-vloz-vygenerovany-password-hash"
+os.environ["DRZKROK_SESSION_SECRET"] = "sem-vloz-vygenerovany-session-secret"
+os.environ["DRZKROK_REQUIRE_LOGIN_TO_VIEW"] = "true"
 
 project_home = Path('/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/pythonanywhere')
 if str(project_home) not in sys.path:
@@ -215,11 +235,34 @@ Pak v záložce **Web** klikni **Reload**.
 
 Hotovo.
 
+
+## Když backend na PythonAnywhere nefunguje
+
+Podle PythonAnywhere obrazovky může být **Source code** správně nastavený na:
+
+```text
+/home/tvojeuzivatelskejmeno/mysite/drzkrok-web
+```
+
+To ale samo o sobě Flask backend nespustí. Rozhodující je WSGI configuration file. V něm musí být `project_home` přesně:
+
+```python
+project_home = Path('/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/pythonanywhere')
+```
+
+Pak klikni **Reload** a ověř:
+
+```text
+https://tvojeuzivatelskejmeno.pythonanywhere.com/api/health
+```
+
+Když se neukáže `{"ok": true}`, otevři na PythonAnywhere error log v záložce **Web**. Nejčastější chyby jsou špatná cesta ve WSGI, nenainstalovaný Flask, nebo chybějící `DRZKROK_ADMIN_USERNAME`, `DRZKROK_ADMIN_PASSWORD_HASH` a `DRZKROK_SESSION_SECRET`.
+
 ## Jak upravovat přímo na stránce
 
 1. Otevři dashboard.
 2. Vpravo dole klikni **Upravit**.
-3. Vyplň **Admin token**.
+3. Vyplň **uživatelské jméno a heslo** a klikni **Přihlásit**.
 4. Klikni **Zapnout úpravy**.
 5. Klikni přímo do názvu, popisku, termínu, místa, stavů nebo poznámek a přepiš text.
 6. Pro mapu a rychlé odkazy použij pole v horní projektové kartě.
@@ -229,7 +272,7 @@ Hotovo.
 ## Jak nahrát obrázek / screenshot přímo na stránce
 
 1. Vpravo dole klikni **Upravit**.
-2. Vyplň token.
+2. Vyplň uživatelské jméno a heslo a klikni **Přihlásit**.
 3. Rozklikni **Nahrát obrázek**.
 4. Vyber soubor.
 5. Doplníš popisek.

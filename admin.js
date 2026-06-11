@@ -1,8 +1,10 @@
 const adminConfig = window.DRZKROK_CONFIG || {};
 const apiInput = document.querySelector('#api-url');
-const tokenInput = document.querySelector('#admin-token');
+const usernameInput = document.querySelector('#admin-username');
+const passwordInput = document.querySelector('#admin-password');
 const editor = document.querySelector('#json-editor');
 const message = document.querySelector('#admin-message');
+const loginButton = document.querySelector('#login-button');
 const loadButton = document.querySelector('#load-button');
 const saveButton = document.querySelector('#save-button');
 const formatButton = document.querySelector('#format-button');
@@ -13,10 +15,10 @@ const uploadButton = document.querySelector('#upload-button');
 const uploadResult = document.querySelector('#upload-result');
 
 const savedApiUrl = localStorage.getItem('drzkrokApiBaseUrl');
-const savedToken = localStorage.getItem('drzkrokAdminToken');
+const savedUsername = localStorage.getItem('drzkrokAdminUsername');
 
 apiInput.value = savedApiUrl || adminConfig.apiBaseUrl || '';
-tokenInput.value = savedToken || '';
+usernameInput.value = savedUsername || '';
 
 function cleanApiUrl() {
   return apiInput.value.trim().replace(/\/$/, '');
@@ -69,8 +71,10 @@ function validatePayload(payload) {
 
 async function fetchBackend(path, options = {}) {
   const apiUrl = cleanApiUrl();
-
-  const response = await fetch(`${apiUrl}${path}`, options);
+  const response = await fetch(`${apiUrl}${path}`, {
+    credentials: 'include',
+    ...options,
+  });
 
   if (!response.ok) {
     const text = await response.text();
@@ -82,44 +86,55 @@ async function fetchBackend(path, options = {}) {
 
 function saveSettings() {
   localStorage.setItem('drzkrokApiBaseUrl', cleanApiUrl());
-  localStorage.setItem('drzkrokAdminToken', tokenInput.value.trim());
-  setMessage('Nastavení je uložené v tomhle prohlížeči.');
+  localStorage.setItem('drzkrokAdminUsername', usernameInput.value.trim());
+  setMessage('Nastavení je uložené v tomhle prohlížeči. Heslo se neukládá.');
+}
+
+async function login() {
+  setMessage('Přihlašuju…');
+
+  try {
+    const username = usernameInput.value.trim();
+    const password = passwordInput.value;
+
+    if (!username || !password) {
+      throw new Error('Vyplň uživatelské jméno i heslo.');
+    }
+
+    await fetchBackend('/api/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+
+    saveSettings();
+    setMessage('Přihlášeno. Teď můžeš ukládat změny a nahrávat obrázky.');
+  } catch (error) {
+    setMessage(`Přihlášení selhalo: ${error.message}`, 'error');
+  }
 }
 
 async function loadData() {
-  setMessage('Načítám projekt z backendu…');
+  setMessage('Načítám data z backendu…');
 
   try {
-    const data = await fetchBackend('/api/dashboard', {
-      headers: {
-        Accept: 'application/json',
-      },
-    });
+    const data = await fetchBackend('/api/dashboard');
     editor.value = JSON.stringify(validatePayload(data), null, 2);
     saveSettings();
-    setMessage('Projekt načten.');
+    setMessage('Data načtená.');
   } catch (error) {
     setMessage(`Načtení selhalo: ${error.message}`, 'error');
   }
 }
 
 async function saveData() {
-  setMessage('Ukládám projekt…');
+  setMessage('Ukládám data…');
 
   try {
     const payload = validatePayload(JSON.parse(editor.value));
-    const token = tokenInput.value.trim();
-
-    if (!token) {
-      throw new Error('Pro uložení vyplň admin token.');
-    }
-
     const data = await fetchBackend('/api/dashboard', {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
@@ -136,12 +151,7 @@ async function uploadImage() {
   uploadResult.textContent = '';
 
   try {
-    const token = tokenInput.value.trim();
     const file = imageFileInput.files[0];
-
-    if (!token) {
-      throw new Error('Pro upload vyplň admin token.');
-    }
 
     if (!file) {
       throw new Error('Vyber obrázek nebo screenshot.');
@@ -153,9 +163,6 @@ async function uploadImage() {
 
     const result = await fetchBackend('/api/uploads', {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
       body: formData,
     });
 
@@ -182,6 +189,7 @@ function formatJson() {
   }
 }
 
+loginButton.addEventListener('click', login);
 loadButton.addEventListener('click', loadData);
 saveButton.addEventListener('click', saveData);
 formatButton.addEventListener('click', formatJson);

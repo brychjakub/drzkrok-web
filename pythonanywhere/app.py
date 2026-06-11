@@ -4,7 +4,8 @@ import tempfile
 import uuid
 from pathlib import Path
 
-from flask import Flask, jsonify, make_response, request, send_from_directory, url_for
+from flask import Flask, jsonify, make_response, request, send_from_directory, session, url_for
+from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -15,8 +16,11 @@ STORAGE_DIR = Path(os.environ.get("DRZKROK_STORAGE_DIR", BASE_DIR / "storage"))
 SEED_DATA_FILE = BASE_DIR / "data.json"
 DATA_FILE = Path(os.environ.get("DRZKROK_DATA_FILE", STORAGE_DIR / "data.json"))
 UPLOAD_DIR = Path(os.environ.get("DRZKROK_UPLOAD_DIR", STORAGE_DIR / "uploads"))
-ADMIN_TOKEN = os.environ.get("DRZKROK_ADMIN_TOKEN", "change-this-token")
+ADMIN_USERNAME = os.environ.get("DRZKROK_ADMIN_USERNAME")
+ADMIN_PASSWORD_HASH = os.environ.get("DRZKROK_ADMIN_PASSWORD_HASH")
+SESSION_SECRET = os.environ.get("DRZKROK_SESSION_SECRET")
 ALLOWED_ORIGIN = os.environ.get("DRZKROK_ALLOWED_ORIGIN", "*")
+REQUIRE_LOGIN_TO_VIEW = os.environ.get("DRZKROK_REQUIRE_LOGIN_TO_VIEW", "false").lower() in {"1", "true", "yes", "on"}
 MAX_UPLOAD_BYTES = int(os.environ.get("DRZKROK_MAX_UPLOAD_BYTES", 8 * 1024 * 1024))
 ALLOWED_EXTENSIONS = {"gif", "jpeg", "jpg", "png", "webp"}
 
@@ -52,12 +56,19 @@ DEFAULT_DATA = {
 
 
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
+if SESSION_SECRET:
+    app.secret_key = SESSION_SECRET
+else:
+    # Bez explicitního secret key nepovolíme přihlášení ani zápis.
+    # Tím se vyhneme nechtěným default heslům v produkci.
+    app.secret_key = os.urandom(32)
 
 
 def add_cors(response):
     response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
     response.headers["Access-Control-Allow-Methods"] = "GET, PUT, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
 
 
@@ -147,14 +158,83 @@ def validate_data(data):
         raise ValueError('"activeProjectId" musí odpovídat existujícímu projektu.')
 
 
+def auth_is_configured():
+    return bool(ADMIN_USERNAME and ADMIN_PASSWORD_HASH and SESSION_SECRET)
+
+
+def credentials_are_valid(username, password):
+    if not auth_is_configured():
+        return False
+
+    if username != ADMIN_USERNAME:
+        return False
+
+    return check_password_hash(ADMIN_PASSWORD_HASH, password)
+
+
 def is_authorized():
-    expected = f"Bearer {ADMIN_TOKEN}"
-    return request.headers.get("Authorization") == expected
+    return bool(session.get("drzkrok_admin_authenticated"))
+
+
+def require_authorized():
+    if not auth_is_configured():
+        return make_response("Přihlášení není nastavené. Doplň DRZKROK_ADMIN_USERNAME, DRZKROK_ADMIN_PASSWORD_HASH a DRZKROK_SESSION_SECRET ve WSGI.", 500)
+
+    if not is_authorized():
+        return make_response("Nejsi přihlášený.", 401)
+
+    return None
 
 
 def allowed_upload(filename):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
+
+def view_requires_login(filename=None):
+    if not REQUIRE_LOGIN_TO_VIEW or is_authorized():
+        return False
+
+    public_files = {"login.html", "login.js", "style.css", "admin.css", "config.js"}
+    return filename not in public_files
+
+
+
+@app.route("/api/session", methods=["GET", "OPTIONS"])
+def session_status():
+    if request.method == "OPTIONS":
+        return make_response("", 204)
+
+    return jsonify({"authenticated": is_authorized(), "configured": auth_is_configured()})
+
+
+@app.route("/api/login", methods=["POST", "OPTIONS"])
+def login():
+    if request.method == "OPTIONS":
+        return make_response("", 204)
+
+    payload = request.get_json(silent=True) or {}
+    username = str(payload.get("username") or "")
+    password = str(payload.get("password") or "")
+
+    if not auth_is_configured():
+        return make_response("Přihlášení není nastavené ve WSGI.", 500)
+
+    if not credentials_are_valid(username, password):
+        return make_response("Neplatné jméno nebo heslo.", 401)
+
+    session.clear()
+    session["drzkrok_admin_authenticated"] = True
+    session["drzkrok_admin_username"] = username
+    return jsonify({"authenticated": True})
+
+
+@app.route("/api/logout", methods=["POST", "OPTIONS"])
+def logout():
+    if request.method == "OPTIONS":
+        return make_response("", 204)
+
+    session.clear()
+    return jsonify({"authenticated": False})
 
 @app.route("/api/health", methods=["GET", "OPTIONS"])
 def health():
@@ -172,8 +252,9 @@ def dashboard():
     if request.method == "GET":
         return jsonify(load_data())
 
-    if not is_authorized():
-        return make_response("Neplatný nebo chybějící admin token.", 401)
+    auth_error = require_authorized()
+    if auth_error:
+        return auth_error
 
     payload = request.get_json(silent=True)
 
@@ -198,8 +279,9 @@ def uploads():
     if request.method == "OPTIONS":
         return make_response("", 204)
 
-    if not is_authorized():
-        return make_response("Neplatný nebo chybějící admin token.", 401)
+    auth_error = require_authorized()
+    if auth_error:
+        return auth_error
 
     uploaded_file = request.files.get("image")
 
@@ -224,11 +306,19 @@ def uploads():
 
 @app.route("/uploads/<path:filename>", methods=["GET"])
 def uploaded_file(filename):
+    if REQUIRE_LOGIN_TO_VIEW:
+        auth_error = require_authorized()
+        if auth_error:
+            return auth_error
+
     return send_from_directory(UPLOAD_DIR, filename)
 
 
 @app.route("/", methods=["GET"])
 def frontend_index():
+    if view_requires_login("index.html"):
+        return send_from_directory(REPO_DIR, "login.html")
+
     return send_from_directory(REPO_DIR, "index.html")
 
 
@@ -243,9 +333,14 @@ def frontend_file(filename):
         "admin.html",
         "admin.css",
         "admin.js",
+        "login.html",
+        "login.js",
     }
 
     if filename in allowed_files:
+        if view_requires_login(filename):
+            return send_from_directory(REPO_DIR, "login.html")
+
         return send_from_directory(REPO_DIR, filename)
 
     return make_response("Nenalezeno.", 404)

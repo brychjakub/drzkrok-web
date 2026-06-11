@@ -23,11 +23,15 @@
       <label for="api-url">Backend URL</label>
       <input id="api-url" type="url" placeholder="https://tvojeuzivatelskejmeno.pythonanywhere.com" autocomplete="url" />
 
-      <label for="admin-token">Admin token</label>
-      <input id="admin-token" type="password" placeholder="Token z PythonAnywhere backendu" autocomplete="current-password" />
+      <label for="admin-username">Uživatelské jméno</label>
+      <input id="admin-username" type="text" placeholder="admin" autocomplete="username" />
+
+      <label for="admin-password">Heslo</label>
+      <input id="admin-password" type="password" placeholder="Heslo z PythonAnywhere nastavení" autocomplete="current-password" />
 
       <div class="admin-actions">
-        <button id="load-button" class="admin-button" type="button">Načíst projekt</button>
+        <button id="login-button" class="admin-button" type="button">Přihlásit</button>
+        <button id="load-button" class="admin-button secondary" type="button">Načíst projekt</button>
         <button id="save-settings-button" class="admin-button secondary" type="button">Zapamatovat nastavení</button>
       </div>
     </section>

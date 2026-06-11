@@ -145,21 +145,25 @@ function renderMap(map = {}) {
 
 function createCard(item, index) {
   const card = document.createElement('article');
-  card.className = `item-card${editMode ? ' is-editing' : ''}`;
+  card.className = `item-card${editMode ? ' is-editing is-open' : ''}`;
 
   const detailId = `detail-${index}`;
   const titleHtml = renderEditableText(item.title || 'Bez názvu', `item.${index}.title`, 'item-title-edit');
   const statusHtml = renderEditableText(item.status || 'klid', `item.${index}.status`);
   const categoryHtml = renderEditableText(item.category || 'projekt', `item.${index}.category`);
+  const toggleTag = editMode ? 'div' : 'button';
+  const toggleAttributes = editMode
+    ? `class="item-toggle" aria-controls="${detailId}"`
+    : `class="item-toggle" type="button" aria-expanded="false" aria-controls="${detailId}"`;
 
   card.innerHTML = `
-    <button class="item-toggle" type="button" aria-expanded="${editMode ? 'true' : 'false'}" aria-controls="${detailId}">
+    <${toggleTag} ${toggleAttributes}>
       <div class="item-topline">
         <h3 class="item-title">${titleHtml}</h3>
         <span class="item-status">${statusHtml}</span>
       </div>
       <p class="item-category">${categoryHtml}</p>
-    </button>
+    </${toggleTag}>
     <div id="${detailId}" class="item-detail">
       <div class="detail-grid">
         <div>
@@ -190,16 +194,13 @@ function createCard(item, index) {
     </div>
   `;
 
-  if (editMode) {
-    card.classList.add('is-open');
+  if (!editMode) {
+    const button = card.querySelector('.item-toggle');
+    button.addEventListener('click', () => {
+      const isOpen = card.classList.toggle('is-open');
+      button.setAttribute('aria-expanded', String(isOpen));
+    });
   }
-
-  const button = card.querySelector('.item-toggle');
-  button.addEventListener('click', (event) => {
-    if (editMode && event.target.closest('[contenteditable="true"]')) return;
-    const isOpen = card.classList.toggle('is-open');
-    button.setAttribute('aria-expanded', String(isOpen));
-  });
 
   return card;
 }
@@ -313,7 +314,7 @@ function validateData(data, sourceName) {
 }
 
 async function fetchJson(url, sourceName, options = {}) {
-  const response = await fetch(url, { cache: 'no-store', ...options });
+  const response = await fetch(url, { cache: 'no-store', credentials: 'include', ...options });
 
   if (!response.ok) {
     const text = await response.text();
@@ -407,8 +408,10 @@ function createInlineEditor() {
       <h2>Rychlá úprava</h2>
       <p>Zapni úpravy, klikni do textu na stránce, přepiš ho a ulož.</p>
       <label>Backend URL<input id="quick-api-url" value="${escapeHtml(apiBaseUrl)}" placeholder="prázdné = stejná doména" /></label>
-      <label>Admin token<input id="quick-token" type="password" autocomplete="current-password" /></label>
+      <label>Uživatelské jméno<input id="quick-username" autocomplete="username" placeholder="admin" /></label>
+      <label>Heslo<input id="quick-password" type="password" autocomplete="current-password" /></label>
       <div class="quick-actions">
+        <button id="quick-login" type="button">Přihlásit</button>
         <button id="quick-edit-mode" type="button">Zapnout úpravy</button>
         <button id="quick-save" type="button">Uložit</button>
       </div>
@@ -418,24 +421,29 @@ function createInlineEditor() {
         <input id="quick-image-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
         <button id="quick-upload" type="button">Nahrát a přidat do projektu</button>
       </details>
-      <p class="edit-hint">Token se ukládá jen do tohoto prohlížeče. Bez tokenu nejde zapisovat.</p>
+      <p class="edit-hint">Ukládá se jen Backend URL a uživatelské jméno. Heslo se neukládá.</p>
     </div>
   `;
   document.body.append(panel);
 
   const toggle = panel.querySelector('.quick-edit-toggle');
   const editPanel = panel.querySelector('.quick-edit-panel');
+  const loginButton = panel.querySelector('#quick-login');
   const modeButton = panel.querySelector('#quick-edit-mode');
   const saveButton = panel.querySelector('#quick-save');
   const uploadButton = panel.querySelector('#quick-upload');
-  const tokenInput = panel.querySelector('#quick-token');
+  const usernameInput = panel.querySelector('#quick-username');
   const apiInput = panel.querySelector('#quick-api-url');
 
-  tokenInput.value = localStorage.getItem('drzkrokInlineToken') || '';
+  usernameInput.value = localStorage.getItem('drzkrokInlineUsername') || '';
   apiInput.value = localStorage.getItem('drzkrokInlineApiUrl') || apiBaseUrl;
 
   toggle.addEventListener('click', () => {
     editPanel.hidden = !editPanel.hidden;
+  });
+
+  loginButton.addEventListener('click', async () => {
+    await loginEditor(panel);
   });
 
   modeButton.addEventListener('click', () => {
@@ -460,10 +468,34 @@ function getEditorApiBase(panel) {
   return value;
 }
 
-function getEditorToken(panel) {
-  const token = panel.querySelector('#quick-token').value.trim();
-  localStorage.setItem('drzkrokInlineToken', token);
-  return token;
+function getEditorUsername(panel) {
+  const username = panel.querySelector('#quick-username').value.trim();
+  localStorage.setItem('drzkrokInlineUsername', username);
+  return username;
+}
+
+async function loginEditor(panel) {
+  setMessage('Přihlašuju…');
+
+  try {
+    const base = getEditorApiBase(panel);
+    const username = getEditorUsername(panel);
+    const password = panel.querySelector('#quick-password').value;
+
+    if (!username || !password) {
+      throw new Error('Vyplň uživatelské jméno i heslo.');
+    }
+
+    await fetchJson(`${base}/api/login`, 'Přihlášení', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+
+    setMessage('Přihlášeno. Teď můžeš upravovat, ukládat a nahrávat obrázky.');
+  } catch (error) {
+    setMessage(`Přihlášení selhalo: ${error.message}`, 'error');
+  }
 }
 
 async function saveDashboard(panel) {
@@ -471,15 +503,11 @@ async function saveDashboard(panel) {
   setMessage('Ukládám změny…');
 
   try {
-    const token = getEditorToken(panel);
-    if (!token) throw new Error('Vyplň admin token.');
-
     const base = getEditorApiBase(panel);
     const saved = await fetchJson(`${base}/api/dashboard`, 'Backend', {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       },
       body: JSON.stringify(dashboardData),
     });
@@ -496,9 +524,6 @@ async function uploadImage(panel) {
   setMessage('Nahrávám obrázek…');
 
   try {
-    const token = getEditorToken(panel);
-    if (!token) throw new Error('Vyplň admin token.');
-
     const fileInput = panel.querySelector('#quick-image-file');
     const file = fileInput.files[0];
     if (!file) throw new Error('Vyber obrázek nebo screenshot.');
@@ -510,7 +535,6 @@ async function uploadImage(panel) {
     const base = getEditorApiBase(panel);
     const result = await fetchJson(`${base}/api/uploads`, 'Upload', {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
       body: formData,
     });
 
