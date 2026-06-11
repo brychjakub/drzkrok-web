@@ -1,8 +1,8 @@
 # Drž krok – projektový dashboard
 
-Rychlý osobní dashboard pro **jeden aktivní projekt**. Teď je první aktivní projekt „Výlet na ferraty“ v termínu **31. 7. – 2. 8. 2026**.
+Rychlý osobní dashboard pro **jeden aktivní projekt**. Aktuální ukázkový projekt je „Výlet na ferraty“ v termínu **31. 7. – 2. 8. 2026**.
 
-Filozofie: rychle otevřít, rychle pochopit, rychle upravit. Žádná Jira, žádné workflow monstrum.
+Princip: žádná Jira, žádný plánovač. Jeden projekt, rychlé odkazy, mapa, screenshoty, tři sloupce `Teď`, `Později`, `Hotovo` a schovaný archiv starších projektů.
 
 ## Co to umí
 
@@ -11,10 +11,11 @@ Filozofie: rychle otevřít, rychle pochopit, rychle upravit. Žádná Jira, ž�
 - Mapa / odkaz na mapu.
 - Rychlé odkazy.
 - Obrázky a screenshoty.
-- Archiv starších projektů schovaný dole v rozbalovací sekci.
-- Editace přes `admin.html`.
-- Backend pro PythonAnywhere.
-- Lokální `data.json` jako fallback, když backend zrovna nejede.
+- Archiv starších projektů schovaný dole.
+- Rychlá editace přímo na hlavní stránce tlačítkem **Upravit**.
+- Pokročilejší JSON editace přes `admin.html`.
+- Flask backend pro PythonAnywhere.
+- Nasazení na PythonAnywhere stylem `git clone` a později jen `git pull`.
 
 ## Soubory
 
@@ -22,24 +23,26 @@ Filozofie: rychle otevřít, rychle pochopit, rychle upravit. Žádná Jira, ž�
 
 - `index.html` – veřejný projektový dashboard.
 - `style.css` – minimalistický responzivní styl.
-- `script.js` – načítání projektu, vykreslení karet, mapy, obrázků a archivu.
-- `data.json` – záložní lokální data.
-- `config.js` – adresa PythonAnywhere backendu.
+- `script.js` – načítání projektu, vykreslení karet, mapy, obrázků, archivu a rychlá inline editace.
+- `data.json` – záložní lokální data, když backend nejede.
+- `config.js` – konfigurace API. Pro PythonAnywhere na stejné doméně může zůstat prázdné `apiBaseUrl`.
 
 ### Admin
 
-- `admin.html` – stránka pro úpravu projektu.
+- `admin.html` – pokročilejší stránka pro úpravu celého JSONu.
 - `admin.css` – styl adminu.
 - `admin.js` – načtení/uložení JSONu a upload obrázků.
 
 ### PythonAnywhere backend
 
-- `pythonanywhere/app.py` – Flask API.
-- `pythonanywhere/data.json` – data uložená na backendu.
+- `pythonanywhere/app.py` – Flask API a zároveň jednoduché servírování statických souborů z repozitáře.
+- `pythonanywhere/data.json` – startovací data, ze kterých se při prvním spuštění vytvoří pracovní kopie.
+- `pythonanywhere/storage/data.json` – skutečná pracovní data vytvořená backendem; jsou v `.gitignore`, aby je `git pull` nepřepsal.
+- `pythonanywhere/storage/uploads/` – nahrané obrázky; také mimo Git.
 - `pythonanywhere/requirements.txt` – závislosti.
-- `pythonanywhere/wsgi.py` – vzor WSGI importu pro PythonAnywhere.
+- `pythonanywhere/wsgi.py` – import Flask aplikace.
 
-## Lokální zobrazení
+## Lokální zobrazení bez backendu
 
 V kořeni projektu spusť:
 
@@ -53,216 +56,201 @@ Pak otevři:
 http://127.0.0.1:4173/
 ```
 
-Admin stránka:
+Bez Flask backendu se stránka pokusí o API, spadne na fallback a ukáže lokální `data.json`.
+
+## Lokální spuštění s backendem
+
+```bash
+cd /workspace/drzkrok-web
+python3 -m pip install --user -r pythonanywhere/requirements.txt
+python3 pythonanywhere/app.py
+```
+
+Když spouštíš Flask ručně, můžeš si dočasně doplnit na konec `pythonanywhere/app.py` vlastní `app.run(...)`, ale na PythonAnywhere to potřeba není. PythonAnywhere spouští aplikaci přes WSGI.
+
+## PythonAnywhere: chci jen `git pull`
+
+Ano. Doporučený stav je:
 
 ```text
-http://127.0.0.1:4173/admin.html
+/home/tvojeuzivatelskejmeno/mysite/           ← tady je naklonovaný celý Git repozitář
+/home/tvojeuzivatelskejmeno/mysite/index.html
+/home/tvojeuzivatelskejmeno/mysite/script.js
+/home/tvojeuzivatelskejmeno/mysite/pythonanywhere/app.py
+/home/tvojeuzivatelskejmeno/mysite/pythonanywhere/storage/data.json   ← tvoje živá data, nejsou v Gitu
 ```
 
-Bez backendu bude veřejný web číst jen lokální `data.json`.
-
-## Datový model v kostce
-
-Hlavní soubor má tvar:
-
-```json
-{
-  "activeProjectId": "feraty-2026",
-  "projects": []
-}
-```
-
-Aktivní projekt je ten, jehož `id` odpovídá `activeProjectId`. Staré projekty nemaž, jen jim dej třeba:
-
-```json
-"status": "archived"
-```
-
-A nový aktivní projekt nastavíš změnou:
-
-```json
-"activeProjectId": "novy-projekt-id"
-```
-
-## Jak nasadit backend na PythonAnywhere úplně prakticky
-
-### 1. Vytvoř Flask web
-
-1. Přihlas se do PythonAnywhere.
-2. Jdi na záložku **Web**.
-3. Klikni **Add a new web app**.
-4. Vyber svoji doménu `tvojeuzivatelskejmeno.pythonanywhere.com`.
-5. Vyber **Manual configuration** nebo **Flask**.
-6. Vyber Python verzi, kterou PythonAnywhere nabízí.
-
-### 2. Nahraj backendové soubory
-
-Do složky PythonAnywhere aplikace nahraj **obsah** složky `pythonanywhere/`.
-
-Typický cíl na PythonAnywhere bude něco jako:
-
-```text
-/home/tvojeuzivatelskejmeno/mysite/
-```
-
-Výsledek má být:
-
-```text
-/home/tvojeuzivatelskejmeno/mysite/app.py
-/home/tvojeuzivatelskejmeno/mysite/data.json
-/home/tvojeuzivatelskejmeno/mysite/requirements.txt
-/home/tvojeuzivatelskejmeno/mysite/wsgi.py
-```
-
-Nejjednodušší cesta přes webové rozhraní:
-
-1. PythonAnywhere → **Files**.
-2. Otevři složku aplikace, např. `/home/tvojeuzivatelskejmeno/mysite/`.
-3. Nahraj tam `app.py`, `data.json`, `requirements.txt`, `wsgi.py`.
-
-### 3. Nastav Flask závislosti
-
-V PythonAnywhere otevři konzoli **Bash** a spusť:
+Díky tomu pak aktualizace kódu vypadá jen takhle:
 
 ```bash
 cd /home/tvojeuzivatelskejmeno/mysite
-pip install --user -r requirements.txt
+git pull
 ```
 
-### 4. Nastav admin token
+Živá data a uploady jsou ve složce `pythonanywhere/storage/`, která je ignorovaná Gitem. `git pull` tedy aktualizuje kód, ale nesmaže ti projekty ani obrázky.
 
-V `app.py` je nouzový token:
+## PythonAnywhere první nasazení krok za krokem
+
+### 1. Připrav web aplikaci
+
+1. Přihlas se do PythonAnywhere.
+2. Jdi na záložku **Web**.
+3. Pokud už projekt máš, nech ho být.
+4. Pokud web ještě nemáš, dej **Add a new web app**.
+5. Vyber **Manual configuration** nebo **Flask**.
+6. Vyber dostupnou Python verzi.
+
+### 2. Naklonuj repozitář do `mysite`
+
+V PythonAnywhere otevři **Bash** konzoli.
+
+Pokud složka `mysite` ještě neexistuje:
+
+```bash
+cd /home/tvojeuzivatelskejmeno
+git clone TVOJE_GIT_URL mysite
+```
+
+Pokud složka `mysite` už existuje a je prázdná:
+
+```bash
+cd /home/tvojeuzivatelskejmeno/mysite
+git clone TVOJE_GIT_URL .
+```
+
+Pokud `mysite` už obsahuje staré soubory, nejdřív si je zazálohuj. Pak buď složku vyčisti, nebo naklonuj repo vedle a ve WSGI nastav cestu na tu novou složku. Pro jednoduchý režim `git pull` je nejlepší, aby celý repozitář byl přímo v:
+
+```text
+/home/tvojeuzivatelskejmeno/mysite
+```
+
+### 3. Nainstaluj závislosti
+
+```bash
+cd /home/tvojeuzivatelskejmeno/mysite
+python3 -m pip install --user -r pythonanywhere/requirements.txt
+```
+
+### 4. Nastav tajný token
+
+Nejjednodušší varianta na PythonAnywhere je použít environment proměnnou v WSGI souboru:
 
 ```python
-ADMIN_TOKEN = os.environ.get("DRZKROK_ADMIN_TOKEN", "change-this-token")
+import os
+os.environ["DRZKROK_ADMIN_TOKEN"] = "sem-dej-dlouhy-tajny-token"
 ```
 
-Nejrychlejší varianta: v souboru `app.py` nahraď `change-this-token` vlastním dlouhým heslem.
-
-Lepší varianta: na PythonAnywhere nastav environment proměnnou `DRZKROK_ADMIN_TOKEN`.
+Token budeš zadávat do editace na stránce. Kdo ho nemá, nemůže ukládat.
 
 ### 5. Nastav WSGI
 
-V PythonAnywhere v záložce **Web** otevři WSGI configuration file.
-
-Obsah uprav podle `pythonanywhere/wsgi.py`, princip je:
+Na PythonAnywhere v záložce **Web** otevři **WSGI configuration file** a nastav ho takhle:
 
 ```python
+import os
 import sys
 from pathlib import Path
 
-project_home = Path('/home/tvojeuzivatelskejmeno/mysite')
+os.environ["DRZKROK_ADMIN_TOKEN"] = "sem-dej-dlouhy-tajny-token"
+
+project_home = Path('/home/tvojeuzivatelskejmeno/mysite/pythonanywhere')
 if str(project_home) not in sys.path:
     sys.path.insert(0, str(project_home))
 
 from app import app as application
 ```
 
-Důležité je, aby cesta `project_home` ukazovala na složku, kde je `app.py`.
+Důležité: cesta `project_home` míří do podsložky `pythonanywhere`, protože celý repozitář je v `mysite` a Flask backend je v `mysite/pythonanywhere/app.py`.
 
-### 6. Reloadni backend
+### 6. Reloadni web
 
-Na PythonAnywhere v záložce **Web** klikni **Reload**.
+V záložce **Web** klikni **Reload**.
 
-Pak ověř healthcheck:
+Pak otevři:
 
 ```text
 https://tvojeuzivatelskejmeno.pythonanywhere.com/api/health
 ```
 
-Mělo by se zobrazit:
+Správná odpověď:
 
 ```json
 {"ok": true}
 ```
 
-### 7. Propoj veřejný web s backendem
+### 7. Otevři dashboard
 
-V `config.js` nastav:
+Když PythonAnywhere servíruje i frontend, otevři:
+
+```text
+https://tvojeuzivatelskejmeno.pythonanywhere.com/
+```
+
+`config.js` může zůstat takhle:
 
 ```js
 window.DRZKROK_CONFIG = {
-  apiBaseUrl: 'https://tvojeuzivatelskejmeno.pythonanywhere.com',
+  apiBaseUrl: '',
+  useBackend: true,
 };
 ```
 
-Pak nahraj na hosting/doménu `drzkrok.cz` tyto statické soubory:
+Prázdné `apiBaseUrl` znamená: volej API na stejné doméně.
 
-```text
-index.html
-style.css
-script.js
-config.js
-data.json
-admin.html
-admin.css
-admin.js
+### 8. Jak pak dělat aktualizace kódu
+
+V PythonAnywhere Bash konzoli:
+
+```bash
+cd /home/tvojeuzivatelskejmeno/mysite
+git pull
 ```
 
-### 8. Uprav projekt přes admin
+Pak v záložce **Web** klikni **Reload**.
 
-Otevři:
+Hotovo.
 
-```text
-https://drzkrok.cz/admin.html
-```
+## Jak upravovat přímo na stránce
 
-Vyplň:
+1. Otevři dashboard.
+2. Vpravo dole klikni **Upravit**.
+3. Vyplň **Admin token**.
+4. Klikni **Zapnout úpravy**.
+5. Klikni přímo do názvu, popisku, termínu, místa, stavů nebo poznámek a přepiš text.
+6. Pro mapu a rychlé odkazy použij pole v horní projektové kartě.
+7. Pro odkazy a obrázky se používá jednoduchý JSON, aby to zůstalo malé a rychlé.
+8. Klikni **Uložit**.
 
-- Backend URL: `https://tvojeuzivatelskejmeno.pythonanywhere.com`
-- Admin token: token z kroku 4
+## Jak nahrát obrázek / screenshot přímo na stránce
 
-Pak:
+1. Vpravo dole klikni **Upravit**.
+2. Vyplň token.
+3. Rozklikni **Nahrát obrázek**.
+4. Vyber soubor.
+5. Doplníš popisek.
+6. Klikni **Nahrát a přidat do projektu**.
+7. Klikni **Uložit**.
 
-1. Klikni **Načíst projekt**.
-2. V JSONu uprav název, termín, místo, mapu, odkazy, položky.
-3. Klikni **Srovnat JSON**, když chceš text učesat.
-4. Klikni **Uložit na backend**.
-5. Otevři homepage a obnov stránku.
+Obrázek se uloží do `pythonanywhere/storage/uploads/`, takže ho `git pull` nemaže.
 
-## Jak přidat mapu
+## Jak udělat nový projekt a starý schovat
 
-Do aktivního projektu uprav:
+V `admin.html` nebo v JSON poli na stránce nastav starému projektu:
 
 ```json
-"map": {
-  "label": "Mapa výletu",
-  "url": "https://maps.google.com/...",
-  "embedUrl": ""
-}
+"status": "archived"
 ```
 
-- `url` je obyčejný odkaz na mapu.
-- `embedUrl` je volitelný iframe embed odkaz. Když ho vyplníš, mapa se zobrazí přímo v dashboardu.
-
-## Jak přidat screenshot / obrázek
-
-1. Otevři `admin.html`.
-2. Vyber soubor v sekci **Obrázky / screenshoty**.
-3. Vyplň popisek.
-4. Klikni **Nahrát obrázek**.
-5. Admin zobrazí něco jako:
+Novému projektu dej nové `id` a nahoře změň:
 
 ```json
-{
-  "label": "Screenshot ubytování",
-  "url": "https://tvojeuzivatelskejmeno.pythonanywhere.com/uploads/abc123.webp",
-  "note": ""
-}
+"activeProjectId": "nove-id-projektu"
 ```
 
-6. Tenhle objekt zkopíruj do pole `images` u aktivního projektu.
-7. Klikni **Uložit na backend**.
+Starý projekt zůstane v archivu a hlavní stránka ukáže nový aktivní projekt.
 
 ## A co S3?
 
-Teď je nejrychlejší řešení ukládat obrázky přímo na PythonAnywhere do složky `uploads/`. Pro osobní dashboard a pár screenshotů je to jednodušší než S3.
+Teď je nejrychlejší řešení ukládat obrázky přímo na PythonAnywhere do `pythonanywhere/storage/uploads/`. Pro osobní projektové dashboardy je to jednodušší než S3.
 
-S3 / S3-compatible storage dává smysl později, pokud:
-
-- bude obrázků hodně,
-- budou velké,
-- budeš chtít oddělit soubory od PythonAnywhere,
-- budeš chtít levné dlouhodobé storage.
-
-API je udělané tak, že později jde endpoint `/api/uploads` přepsat na upload do S3 a frontend se skoro nemusí měnit.
+S3 / S3-compatible storage dává smysl později, pokud bude obrázků hodně, budou velké, nebo budeš chtít oddělit soubory od PythonAnywhere.

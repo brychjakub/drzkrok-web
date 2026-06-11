@@ -1,6 +1,6 @@
 window.DRZKROK_CONFIG = {
-  // Sem dej adresu PythonAnywhere backendu, až bude nasazený.
-  // Příklad: 'https://tvojeuzivatelskejmeno.pythonanywhere.com'
-  // Prázdná hodnota nechá web běžet jen z lokálního data.json.
+  // Když web běží z PythonAnywhere Flask aplikace, nech prázdné: API se volá na stejné doméně.
+  // Když frontend hostuješ jinde než backend, vyplň např. 'https://tvojeuzivatelskejmeno.pythonanywhere.com'.
   apiBaseUrl: '',
+  useBackend: true,
 };

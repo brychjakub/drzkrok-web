@@ -70,10 +70,6 @@ function validatePayload(payload) {
 async function fetchBackend(path, options = {}) {
   const apiUrl = cleanApiUrl();
 
-  if (!apiUrl) {
-    throw new Error('Nejdřív vyplň Backend URL.');
-  }
-
   const response = await fetch(`${apiUrl}${path}`, options);
 
   if (!response.ok) {
@@ -192,7 +188,7 @@ formatButton.addEventListener('click', formatJson);
 saveSettingsButton.addEventListener('click', saveSettings);
 uploadButton.addEventListener('click', uploadImage);
 
-if (cleanApiUrl()) {
+if (cleanApiUrl() || adminConfig.useBackend !== false) {
   loadData();
 } else {
   setMessage('Vyplň Backend URL z PythonAnywhere a klikni na „Načíst projekt“.');

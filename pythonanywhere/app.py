@@ -10,8 +10,11 @@ from werkzeug.utils import secure_filename
 app = Flask(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
-DATA_FILE = Path(os.environ.get("DRZKROK_DATA_FILE", BASE_DIR / "data.json"))
-UPLOAD_DIR = Path(os.environ.get("DRZKROK_UPLOAD_DIR", BASE_DIR / "uploads"))
+REPO_DIR = BASE_DIR.parent
+STORAGE_DIR = Path(os.environ.get("DRZKROK_STORAGE_DIR", BASE_DIR / "storage"))
+SEED_DATA_FILE = BASE_DIR / "data.json"
+DATA_FILE = Path(os.environ.get("DRZKROK_DATA_FILE", STORAGE_DIR / "data.json"))
+UPLOAD_DIR = Path(os.environ.get("DRZKROK_UPLOAD_DIR", STORAGE_DIR / "uploads"))
 ADMIN_TOKEN = os.environ.get("DRZKROK_ADMIN_TOKEN", "change-this-token")
 ALLOWED_ORIGIN = os.environ.get("DRZKROK_ALLOWED_ORIGIN", "*")
 MAX_UPLOAD_BYTES = int(os.environ.get("DRZKROK_MAX_UPLOAD_BYTES", 8 * 1024 * 1024))
@@ -65,7 +68,11 @@ def after_request(response):
 
 def load_data():
     if not DATA_FILE.exists():
-        save_data(DEFAULT_DATA)
+        if SEED_DATA_FILE.exists():
+            with SEED_DATA_FILE.open("r", encoding="utf-8") as handle:
+                save_data(json.load(handle))
+        else:
+            save_data(DEFAULT_DATA)
 
     with DATA_FILE.open("r", encoding="utf-8") as handle:
         data = json.load(handle)
@@ -218,3 +225,30 @@ def uploads():
 @app.route("/uploads/<path:filename>", methods=["GET"])
 def uploaded_file(filename):
     return send_from_directory(UPLOAD_DIR, filename)
+
+
+@app.route("/", methods=["GET"])
+def frontend_index():
+    return send_from_directory(REPO_DIR, "index.html")
+
+
+@app.route("/<path:filename>", methods=["GET"])
+def frontend_file(filename):
+    allowed_files = {
+        "index.html",
+        "style.css",
+        "script.js",
+        "config.js",
+        "data.json",
+        "admin.html",
+        "admin.css",
+        "admin.js",
+    }
+
+    if filename in allowed_files:
+        return send_from_directory(REPO_DIR, filename)
+
+    return make_response("Nenalezeno.", 404)
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=5000, debug=True)
