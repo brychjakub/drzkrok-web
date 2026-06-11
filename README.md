@@ -73,21 +73,22 @@ Když spouštíš Flask ručně, můžeš si dočasně doplnit na konec `pythona
 Ano. Doporučený stav je:
 
 ```text
-/home/tvojeuzivatelskejmeno/mysite/           ← tady je naklonovaný celý Git repozitář
-/home/tvojeuzivatelskejmeno/mysite/index.html
-/home/tvojeuzivatelskejmeno/mysite/script.js
-/home/tvojeuzivatelskejmeno/mysite/pythonanywhere/app.py
-/home/tvojeuzivatelskejmeno/mysite/pythonanywhere/storage/data.json   ← tvoje živá data, nejsou v Gitu
+/home/tvojeuzivatelskejmeno/mysite/                  ← tvoje PythonAnywhere složka
+/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/       ← tady je naklonovaný celý Git repozitář
+/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/index.html
+/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/script.js
+/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/pythonanywhere/app.py
+/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/pythonanywhere/storage/data.json   ← tvoje živá data, nejsou v Gitu
 ```
 
 Díky tomu pak aktualizace kódu vypadá jen takhle:
 
 ```bash
-cd /home/tvojeuzivatelskejmeno/mysite
+cd /home/tvojeuzivatelskejmeno/mysite/drzkrok-web
 git pull
 ```
 
-Živá data a uploady jsou ve složce `pythonanywhere/storage/`, která je ignorovaná Gitem. `git pull` tedy aktualizuje kód, ale nesmaže ti projekty ani obrázky.
+Živá data a uploady jsou ve složce `drzkrok-web/pythonanywhere/storage/`, která je ignorovaná Gitem. `git pull` tedy aktualizuje kód, ale nesmaže ti projekty ani obrázky.
 
 ## PythonAnywhere první nasazení krok za krokem
 
@@ -100,34 +101,38 @@ git pull
 5. Vyber **Manual configuration** nebo **Flask**.
 6. Vyber dostupnou Python verzi.
 
-### 2. Naklonuj repozitář do `mysite`
+### 2. Naklonuj repozitář do `mysite/drzkrok-web`
 
 V PythonAnywhere otevři **Bash** konzoli.
 
-Pokud složka `mysite` ještě neexistuje:
+Pokud složka `mysite` ještě neexistuje, vytvoř ji a naklonuj repo dovnitř:
 
 ```bash
 cd /home/tvojeuzivatelskejmeno
-git clone TVOJE_GIT_URL mysite
+mkdir -p mysite
+cd mysite
+git clone TVOJE_GIT_URL
 ```
 
-Pokud složka `mysite` už existuje a je prázdná:
+Pokud složka `mysite` už existuje, což je tvůj případ, udělej jen:
 
 ```bash
 cd /home/tvojeuzivatelskejmeno/mysite
-git clone TVOJE_GIT_URL .
+git clone TVOJE_GIT_URL
 ```
 
-Pokud `mysite` už obsahuje staré soubory, nejdřív si je zazálohuj. Pak buď složku vyčisti, nebo naklonuj repo vedle a ve WSGI nastav cestu na tu novou složku. Pro jednoduchý režim `git pull` je nejlepší, aby celý repozitář byl přímo v:
+Po tomhle vznikne složka podle názvu repozitáře:
 
 ```text
-/home/tvojeuzivatelskejmeno/mysite
+/home/tvojeuzivatelskejmeno/mysite/drzkrok-web
 ```
+
+To je správně. Není potřeba klonovat repo přímo do `mysite`. Důležité je jen v dalších příkazech používat cestu do podsložky `drzkrok-web`.
 
 ### 3. Nainstaluj závislosti
 
 ```bash
-cd /home/tvojeuzivatelskejmeno/mysite
+cd /home/tvojeuzivatelskejmeno/mysite/drzkrok-web
 python3 -m pip install --user -r pythonanywhere/requirements.txt
 ```
 
@@ -153,14 +158,14 @@ from pathlib import Path
 
 os.environ["DRZKROK_ADMIN_TOKEN"] = "sem-dej-dlouhy-tajny-token"
 
-project_home = Path('/home/tvojeuzivatelskejmeno/mysite/pythonanywhere')
+project_home = Path('/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/pythonanywhere')
 if str(project_home) not in sys.path:
     sys.path.insert(0, str(project_home))
 
 from app import app as application
 ```
 
-Důležité: cesta `project_home` míří do podsložky `pythonanywhere`, protože celý repozitář je v `mysite` a Flask backend je v `mysite/pythonanywhere/app.py`.
+Důležité: cesta `project_home` míří do podsložky `pythonanywhere` uvnitř naklonovaného repozitáře, tedy do `mysite/drzkrok-web/pythonanywhere`, protože Flask backend je v `mysite/drzkrok-web/pythonanywhere/app.py`.
 
 ### 6. Reloadni web
 
@@ -202,7 +207,7 @@ Prázdné `apiBaseUrl` znamená: volej API na stejné doméně.
 V PythonAnywhere Bash konzoli:
 
 ```bash
-cd /home/tvojeuzivatelskejmeno/mysite
+cd /home/tvojeuzivatelskejmeno/mysite/drzkrok-web
 git pull
 ```
 
@@ -231,7 +236,7 @@ Hotovo.
 6. Klikni **Nahrát a přidat do projektu**.
 7. Klikni **Uložit**.
 
-Obrázek se uloží do `pythonanywhere/storage/uploads/`, takže ho `git pull` nemaže.
+Obrázek se uloží do `pythonanywhere/storage/uploads/` uvnitř `drzkrok-web`, takže ho `git pull` nemaže.
 
 ## Jak udělat nový projekt a starý schovat
 
