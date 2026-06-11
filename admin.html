@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drž krok | Správa projektu</title>
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <main class="page-shell admin-shell">
+    <header class="hero admin-hero" aria-labelledby="page-title">
+      <p class="eyebrow">správa projektu</p>
+      <h1 id="page-title">Upravit projekt</h1>
+      <p class="subtitle">Aktivní projekt, archiv a média. Pořád jedna JSON krabice.</p>
+    </header>
+
+    <section class="admin-panel" aria-labelledby="connection-title">
+      <h2 id="connection-title">Připojení</h2>
+      <p class="help-text">Tahle stránka ukládá data přes PythonAnywhere backend. Veřejný dashboard jen čte.</p>
+
+      <label for="api-url">Backend URL</label>
+      <input id="api-url" type="url" placeholder="https://tvojeuzivatelskejmeno.pythonanywhere.com" autocomplete="url" />
+
+      <label for="admin-token">Admin token</label>
+      <input id="admin-token" type="password" placeholder="Token z PythonAnywhere backendu" autocomplete="current-password" />
+
+      <div class="admin-actions">
+        <button id="load-button" class="admin-button" type="button">Načíst projekt</button>
+        <button id="save-settings-button" class="admin-button secondary" type="button">Zapamatovat nastavení</button>
+      </div>
+    </section>
+
+    <section class="admin-panel" aria-labelledby="upload-title">
+      <h2 id="upload-title">Obrázky / screenshoty</h2>
+      <p class="help-text">Nahraj obrázek, zkopíruj vložený JSON řádek do <code>images</code> u aktivního projektu a ulož data.</p>
+
+      <label for="image-file">Soubor</label>
+      <input id="image-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
+
+      <label for="image-label">Popisek</label>
+      <input id="image-label" type="text" placeholder="např. Screenshot ubytování" />
+
+      <div class="admin-actions">
+        <button id="upload-button" class="admin-button" type="button">Nahrát obrázek</button>
+      </div>
+
+      <pre id="upload-result" class="upload-result" aria-live="polite"></pre>
+    </section>
+
+    <section class="admin-panel" aria-labelledby="editor-title">
+      <div class="editor-head">
+        <div>
+          <h2 id="editor-title">Projektová data</h2>
+          <p class="help-text">Měníš název, termín, mapu, odkazy, obrázky, úkoly i archiv. Aktivní projekt určuje <code>activeProjectId</code>.</p>
+        </div>
+        <button id="format-button" class="admin-button secondary" type="button">Srovnat JSON</button>
+      </div>
+
+      <textarea id="json-editor" spellcheck="false" aria-label="JSON data projektu"></textarea>
+
+      <div class="admin-actions">
+        <button id="save-button" class="admin-button" type="button">Uložit na backend</button>
+        <a class="plain-link" href="index.html">Zpět na dashboard</a>
+      </div>
+    </section>
+
+    <div id="admin-message" class="message" role="status" aria-live="polite"></div>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="admin.js" defer></script>
+</body>
+</html>

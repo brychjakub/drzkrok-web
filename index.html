@@ -3,26 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Drž krok | Osobní nástěnka</title>
-  <meta name="description" content="Ultra jednoduchá osobní nástěnka pro rychlé zorientování: teď, později, hotovo." />
+  <title>Drž krok | Projektový dashboard</title>
+  <meta name="description" content="Rychlý osobní dashboard pro jeden aktivní projekt, mapu, odkazy, screenshoty a archiv starších projektů." />
   <meta name="theme-color" content="#f6f2ea" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main class="page-shell">
-    <header class="hero" aria-labelledby="page-title">
+    <header class="hero project-hero" aria-labelledby="page-title">
       <p class="eyebrow">drzkrok.cz</p>
       <h1 id="page-title">Drž krok</h1>
-      <p class="subtitle">Osobní nástěnka. Ne plánovač.</p>
+      <p id="project-subtitle" class="subtitle">Jeden projekt. Žádný plánovač.</p>
     </header>
 
-    <div id="message" class="message" role="status" aria-live="polite">Načítám nástěnku…</div>
+    <div id="message" class="message" role="status" aria-live="polite">Načítám projekt…</div>
 
-    <section class="board" aria-label="Osobní nástěnka">
+    <section id="project-overview" class="project-overview" aria-label="Přehled aktivního projektu"></section>
+
+    <section class="board" aria-label="Projektová nástěnka">
       <section class="column" aria-labelledby="now-title">
         <div class="column-head">
           <h2 id="now-title">Teď</h2>
-          <span class="column-note">co je v hlavě</span>
+          <span class="column-note">co řeším</span>
         </div>
         <div id="now-list" class="card-list" data-state="now"></div>
       </section>
@@ -43,10 +45,13 @@
         <div id="done-list" class="card-list" data-state="done"></div>
       </section>
     </section>
+
+    <section id="archive" class="archive" aria-label="Archiv projektů"></section>
   </main>
 
   <footer class="footer">Méně systému. Více jasno.</footer>
 
+  <script src="config.js"></script>
   <script src="script.js" defer></script>
 </body>
 </html>
