@@ -1,0 +1,118 @@
+.admin-shell {
+  max-width: 900px;
+}
+
+.admin-hero {
+  margin-bottom: 22px;
+}
+
+.admin-panel {
+  display: grid;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-radius: calc(var(--radius) + 6px);
+  background: rgba(255, 253, 248, 0.7);
+  box-shadow: var(--shadow);
+}
+
+.admin-panel h2 {
+  margin-bottom: 0;
+}
+
+.help-text {
+  margin: 0;
+  color: var(--muted);
+}
+
+.admin-panel label {
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.admin-panel input,
+#json-editor {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.admin-panel input {
+  min-height: 46px;
+  padding: 10px 12px;
+}
+
+#json-editor {
+  min-height: 52vh;
+  padding: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.92rem;
+  line-height: 1.55;
+  resize: vertical;
+}
+
+.admin-actions,
+.editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-button {
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid var(--accent);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--surface);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.admin-button.secondary {
+  border-color: var(--line);
+  background: var(--surface-soft);
+  color: var(--text);
+}
+
+.admin-button:hover,
+.admin-button:focus-visible,
+.plain-link:hover,
+.plain-link:focus-visible {
+  filter: brightness(0.97);
+}
+
+.plain-link {
+  color: var(--accent);
+  font-weight: 800;
+  text-decoration: none;
+}
+
+code {
+  padding: 0.1em 0.32em;
+  border-radius: 0.38em;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.upload-result {
+  min-height: 44px;
+  max-width: 100%;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-soft);
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
