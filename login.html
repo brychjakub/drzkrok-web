@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="cs">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Drž krok | Přihlášení</title>
+  <meta name="robots" content="noindex" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <main class="page-shell admin-shell">
+    <header class="hero admin-hero" aria-labelledby="page-title">
+      <p class="eyebrow">drzkrok.cz</p>
+      <h1 id="page-title">Přihlášení</h1>
+      <p class="subtitle">Soukromý projektový dashboard.</p>
+    </header>
+
+    <section class="admin-panel" aria-labelledby="login-title">
+      <h2 id="login-title">Jméno a heslo</h2>
+      <p class="help-text">Po přihlášení se vrátíš na dashboard.</p>
+
+      <label for="login-username">Uživatelské jméno</label>
+      <input id="login-username" type="text" autocomplete="username" />
+
+      <label for="login-password">Heslo</label>
+      <input id="login-password" type="password" autocomplete="current-password" />
+
+      <div class="admin-actions">
+        <button id="login-submit" class="admin-button" type="button">Přihlásit</button>
+      </div>
+    </section>
+
+    <div id="login-message" class="message" role="status" aria-live="polite"></div>
+  </main>
+
+  <script src="config.js"></script>
+  <script src="login.js" defer></script>
+</body>
+</html>
