@@ -266,8 +266,26 @@ Když se neukáže `{"ok": true}`, otevři na PythonAnywhere error log v zálož
 4. Klikni **Zapnout úpravy**.
 5. Klikni přímo do názvu, popisku, termínu, místa, stavů nebo poznámek a přepiš text.
 6. Pro mapu a rychlé odkazy použij pole v horní projektové kartě.
-7. Obrázky se v edit módu zobrazí jako jednotlivé karty. Každou můžeš přepsat nebo tlačítkem **Smazat z projektu** odebrat.
-8. Klikni **Uložit**.
+7. Úkoly můžeš přidat tlačítkem **Přidat do Teď/Později/Hotovo** a smazat tlačítkem **Smazat úkol** přímo v kartě.
+8. Odkazy se neupravují jako JSON: klikneš **Přidat odkaz**, vyplníš název a URL. Po uložení budou normálně klikatelné.
+9. Obrázky se v edit módu zobrazí jako jednotlivé karty. Každou můžeš přepsat nebo tlačítkem **Smazat z projektu** odebrat.
+10. Klikni **Uložit**.
+
+## Jak přidat nebo smazat úkol
+
+1. Vpravo dole klikni **Upravit**.
+2. Klikni **Zapnout úpravy**.
+3. Dole v každém sloupci je tlačítko **Přidat do Teď**, **Přidat do Později** nebo **Přidat do Hotovo**.
+4. Nový úkol se hned objeví jako karta. Přepiš název, stav, další krok, poznámku nebo sloupec.
+5. Když chceš úkol odstranit, v jeho detailu klikni **Smazat úkol**.
+6. Nakonec klikni **Uložit**.
+
+## Jak přidat odkaz bez JSONu
+
+1. V edit módu najdi sekci **Rychlé odkazy** nebo **Odkazy** uvnitř konkrétního úkolu.
+2. Klikni **Přidat odkaz**.
+3. Vyplň název a URL. Můžeš napsat i `maps.google.com`; aplikace z toho při zobrazení udělá klikací `https://maps.google.com`.
+4. Klikni **Uložit**.
 
 ## Jak nahrát nebo smazat obrázek / screenshot přímo na stránce
 

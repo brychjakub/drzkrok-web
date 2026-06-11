@@ -53,14 +53,18 @@ button {
 button:hover,
 .quick-edit-toggle:hover,
 .quick-editor button:hover,
-.small-danger-button:hover {
+.small-danger-button:hover,
+.add-item-button:hover,
+.small-secondary-button:hover {
   transform: translateY(-1px);
 }
 
 button:active,
 .quick-edit-toggle:active,
 .quick-editor button:active,
-.small-danger-button:active {
+.small-danger-button:active,
+.add-item-button:active,
+.small-secondary-button:active {
   transform: translateY(0);
 }
 
@@ -536,7 +540,9 @@ h2 {
 .quick-editor input:focus,
 .quick-editor button:focus-visible,
 .quick-edit-toggle:focus-visible,
-select:focus {
+select:focus,
+.add-item-button:focus-visible,
+.small-secondary-button:focus-visible {
   outline: 3px solid rgba(223, 139, 78, 0.28);
   outline-offset: 2px;
 }
@@ -763,4 +769,43 @@ body.editing .media-section {
   font-size: 0.9rem;
   margin: 0;
   padding: 0.7rem 0.8rem;
+}
+
+.link-edit-list {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.link-edit-card {
+  border: 1px solid rgba(43, 34, 25, 0.12);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.62);
+  display: grid;
+  gap: 0.65rem;
+  padding: 0.75rem;
+}
+
+.add-item-button,
+.small-secondary-button {
+  border: 1px dashed rgba(43, 34, 25, 0.22);
+  border-radius: 18px;
+  background: rgba(255, 250, 241, 0.72);
+  color: var(--accent);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  padding: 0.85rem 1rem;
+  transition: transform 150ms ease, border-color 150ms ease, background-color 150ms ease;
+}
+
+.add-item-button:hover,
+.small-secondary-button:hover {
+  background: rgba(255, 255, 255, 0.9);
+  border-color: rgba(43, 34, 25, 0.34);
+  transform: translateY(-1px);
+}
+
+.add-item-button:active,
+.small-secondary-button:active {
+  transform: translateY(0);
 }

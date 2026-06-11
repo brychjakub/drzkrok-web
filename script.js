@@ -62,12 +62,62 @@ function renderEditableTextarea(value, path, placeholder = '') {
   `;
 }
 
+function normalizeUrl(url = '') {
+  const trimmed = String(url).trim();
+  if (!trimmed) return '';
+  if (/^(https?:|mailto:|tel:)/i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
+
+function getLinksByOwner(owner) {
+  if (!activeProject) return [];
+
+  if (owner === 'project') {
+    activeProject.links = Array.isArray(activeProject.links) ? activeProject.links : [];
+    return activeProject.links;
+  }
+
+  if (owner.startsWith('item.')) {
+    const [, itemIndexText] = owner.split('.');
+    const item = activeProject.items?.[Number(itemIndexText)];
+    if (!item) return [];
+    item.links = Array.isArray(item.links) ? item.links : [];
+    return item.links;
+  }
+
+  return [];
+}
+
+function renderLinkEditor(links = [], owner = '') {
+  const editableLinks = Array.isArray(links) ? links : [];
+  const rows = editableLinks
+    .map((link, index) => {
+      const label = escapeHtml(link.label || '');
+      const url = escapeHtml(link.url || '');
+
+      return `
+        <article class="link-edit-card">
+          <label class="inline-label">Název<input data-edit-path="link.${owner}.${index}.label" value="${label}" placeholder="Google Maps" /></label>
+          <label class="inline-label">Odkaz<input data-edit-path="link.${owner}.${index}.url" value="${url}" placeholder="https://..." /></label>
+          <button class="small-danger-button" type="button" data-remove-link="${owner}" data-link-index="${index}">Smazat odkaz</button>
+        </article>
+      `;
+    })
+    .join('');
+
+  return `
+    <div class="link-edit-list">
+      ${rows || '<p class="empty-links">Zatím žádné odkazy.</p>'}
+      <button class="small-secondary-button" type="button" data-add-link="${owner}">Přidat odkaz</button>
+    </div>
+  `;
+}
+
 function renderLinks(links = [], path = '') {
   if (editMode && path) {
-    return `
-      <textarea class="inline-textarea inline-json" data-edit-path="${path}" aria-label="Odkazy jako JSON">${escapeHtml(JSON.stringify(Array.isArray(links) ? links : [], null, 2))}</textarea>
-      <p class="edit-hint">Odkazy nech jako JSON: [{"label":"Název","url":"https://..."}]</p>
-    `;
+    const owner = path === 'project.links' ? 'project' : path.replace(/^item\.(\d+)\.links$/, 'item.$1');
+    return renderLinkEditor(links, owner);
   }
 
   if (!Array.isArray(links) || links.length === 0) {
@@ -77,7 +127,7 @@ function renderLinks(links = [], path = '') {
   const items = links
     .filter((link) => link && link.url)
     .map((link) => {
-      const href = escapeHtml(link.url);
+      const href = escapeHtml(normalizeUrl(link.url));
       const label = escapeHtml(link.label || link.url);
       return `<li><a href="${href}" target="_blank" rel="noreferrer">${label}</a></li>`;
     })
@@ -146,7 +196,7 @@ function renderMap(map = {}) {
   }
 
   const label = escapeHtml(map.label || 'Mapa');
-  const url = map.url ? escapeHtml(map.url) : '';
+  const url = map.url ? escapeHtml(normalizeUrl(map.url)) : '';
   const embedUrl = map.embedUrl ? escapeHtml(map.embedUrl) : '';
 
   if (embedUrl) {
@@ -211,6 +261,10 @@ function createCard(item, index) {
               ${Object.entries(stateMap).map(([value, group]) => `<option value="${value}"${item.stateGroup === value ? ' selected' : ''}>${group.label}</option>`).join('')}
             </select>
           </div>
+          <div>
+            <span class="detail-label">Úkol</span>
+            <button class="small-danger-button" type="button" data-remove-item="${index}">Smazat úkol</button>
+          </div>
         ` : ''}
       </div>
     </div>
@@ -238,6 +292,17 @@ function renderBoard(items = []) {
 
     document.querySelector(`#${target.listId}`).append(createCard(item, index));
   });
+
+  if (editMode) {
+    Object.entries(stateMap).forEach(([stateGroup, { listId, label }]) => {
+      const addButton = document.createElement('button');
+      addButton.className = 'add-item-button';
+      addButton.type = 'button';
+      addButton.dataset.addItem = stateGroup;
+      addButton.textContent = `Přidat do ${label}`;
+      document.querySelector(`#${listId}`).append(addButton);
+    });
+  }
 }
 
 function getActiveProject(data) {
@@ -413,7 +478,61 @@ function applyEdit(path, value, isJson = false) {
     const image = images[Number(indexText)];
     if (!image) return;
     image[key] = finalValue;
+    return;
   }
+
+  if (path.startsWith('link.')) {
+    const parts = path.split('.');
+    const key = parts.pop();
+    const linkIndex = Number(parts.pop());
+    const owner = parts.slice(1).join('.');
+    const links = getLinksByOwner(owner);
+    const link = links[linkIndex];
+    if (!link) return;
+    link[key] = finalValue;
+  }
+}
+
+function createEmptyItem(stateGroup = 'now') {
+  return {
+    title: 'Nový úkol',
+    stateGroup,
+    state: '',
+    next: '',
+    note: '',
+    links: [],
+    category: 'projekt',
+    status: stateMap[stateGroup]?.label.toLowerCase() || 'teď',
+  };
+}
+
+function addItem(stateGroup) {
+  activeProject.items = Array.isArray(activeProject.items) ? activeProject.items : [];
+  activeProject.items.push(createEmptyItem(stateGroup));
+  renderProject(activeProject);
+  setMessage('Úkol přidaný. Uprav ho a klikni „Uložit“.');
+}
+
+function removeItem(index) {
+  if (!Array.isArray(activeProject.items) || !activeProject.items[index]) return;
+  activeProject.items.splice(index, 1);
+  renderProject(activeProject);
+  setMessage('Úkol smazaný z projektu. Klikni „Uložit“, aby změna zůstala uložená.');
+}
+
+function addLink(owner) {
+  const links = getLinksByOwner(owner);
+  links.push({ label: 'Nový odkaz', url: '' });
+  renderProject(activeProject);
+  setMessage('Odkaz přidaný. Vlož URL a klikni „Uložit“.');
+}
+
+function removeLink(owner, index) {
+  const links = getLinksByOwner(owner);
+  if (!links[index]) return;
+  links.splice(index, 1);
+  renderProject(activeProject);
+  setMessage('Odkaz smazaný. Klikni „Uložit“, aby změna zůstala uložená.');
 }
 
 function bindInlineEditing() {
@@ -426,6 +545,30 @@ function bindInlineEditing() {
       const value = element.isContentEditable ? getTextFromEditable(element) : element.value;
       applyEdit(path, value, element.classList.contains('inline-json'));
       if (path.endsWith('stateGroup')) renderProject(activeProject);
+    });
+  });
+
+  document.querySelectorAll('[data-add-item]').forEach((button) => {
+    button.addEventListener('click', () => {
+      addItem(button.dataset.addItem || 'now');
+    });
+  });
+
+  document.querySelectorAll('[data-remove-item]').forEach((button) => {
+    button.addEventListener('click', () => {
+      removeItem(Number(button.dataset.removeItem));
+    });
+  });
+
+  document.querySelectorAll('[data-add-link]').forEach((button) => {
+    button.addEventListener('click', () => {
+      addLink(button.dataset.addLink || 'project');
+    });
+  });
+
+  document.querySelectorAll('[data-remove-link]').forEach((button) => {
+    button.addEventListener('click', () => {
+      removeLink(button.dataset.removeLink || 'project', Number(button.dataset.linkIndex));
     });
   });
 
