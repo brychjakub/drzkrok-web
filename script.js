@@ -475,7 +475,7 @@ async function deleteUploadedFile(filename) {
     throw new Error('Nejdřív se přihlaš.');
   }
 
-  const base = getEditorApiBase(quickEditorPanel);
+  const base = getEditorApiBase();
   await fetchJson(`${base}/uploads/${encodeURIComponent(filename)}`, 'Smazání obrázku', {
     method: 'DELETE',
   });
@@ -489,7 +489,6 @@ function createInlineEditor() {
     <div class="quick-edit-panel" hidden>
       <h2>Rychlá úprava</h2>
       <p>Zapni úpravy, klikni do textu na stránce, přepiš ho a ulož.</p>
-      <label>Backend URL<input id="quick-api-url" value="${escapeHtml(apiBaseUrl)}" placeholder="prázdné = stejná doména" /></label>
       <p id="quick-auth-status" class="quick-auth-status">Kontroluju přihlášení…</p>
       <div id="quick-auth-fields" class="quick-auth-fields">
         <label>Uživatelské jméno<input id="quick-username" autocomplete="username" placeholder="admin" /></label>
@@ -506,7 +505,7 @@ function createInlineEditor() {
         <input id="quick-image-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" />
         <button id="quick-upload" type="button">Nahrát a přidat do projektu</button>
       </details>
-      <p class="edit-hint">Ukládá se jen Backend URL a uživatelské jméno. Heslo se neukládá.</p>
+      <p class="edit-hint">Heslo se neukládá. Po přihlášení se formulář schová.</p>
     </div>
   `;
   document.body.append(panel);
@@ -518,10 +517,7 @@ function createInlineEditor() {
   const saveButton = panel.querySelector('#quick-save');
   const uploadButton = panel.querySelector('#quick-upload');
   const usernameInput = panel.querySelector('#quick-username');
-  const apiInput = panel.querySelector('#quick-api-url');
-
   usernameInput.value = localStorage.getItem('drzkrokInlineUsername') || '';
-  apiInput.value = localStorage.getItem('drzkrokInlineApiUrl') || apiBaseUrl;
 
   toggle.addEventListener('click', async () => {
     editPanel.hidden = !editPanel.hidden;
@@ -594,7 +590,7 @@ async function refreshAuthStatus(panel = quickEditorPanel) {
   if (!shouldUseBackend || !panel) return;
 
   try {
-    const base = getEditorApiBase(panel);
+    const base = getEditorApiBase();
     const session = await fetchJson(`${base}/api/session`, 'Session');
     isAuthenticated = Boolean(session.authenticated);
     authConfigured = Boolean(session.configured);
@@ -606,10 +602,8 @@ async function refreshAuthStatus(panel = quickEditorPanel) {
   updateAuthPanel(panel);
 }
 
-function getEditorApiBase(panel) {
-  const value = panel.querySelector('#quick-api-url').value.trim().replace(/\/$/, '');
-  localStorage.setItem('drzkrokInlineApiUrl', value);
-  return value;
+function getEditorApiBase() {
+  return apiBaseUrl;
 }
 
 function getEditorUsername(panel) {
@@ -622,7 +616,7 @@ async function loginEditor(panel) {
   setMessage('Přihlašuju…');
 
   try {
-    const base = getEditorApiBase(panel);
+    const base = getEditorApiBase();
     const username = getEditorUsername(panel);
     const password = panel.querySelector('#quick-password').value;
 
@@ -638,8 +632,10 @@ async function loginEditor(panel) {
 
     isAuthenticated = true;
     authConfigured = true;
+    panel.querySelector('#quick-password').value = '';
     updateAuthPanel(panel);
-    setMessage('Přihlášeno. Teď můžeš upravovat, ukládat a nahrávat obrázky.');
+    setMessage('Přihlášeno. Můžeš upravovat a ukládat.');
+    saveTimer = setTimeout(clearMessage, 1800);
   } catch (error) {
     setMessage(`Přihlášení selhalo: ${error.message}`, 'error');
   }
@@ -658,7 +654,7 @@ async function saveDashboard(panel) {
       throw new Error('Nejdřív se přihlaš.');
     }
 
-    const base = getEditorApiBase(panel);
+    const base = getEditorApiBase();
     const saved = await fetchJson(`${base}/api/dashboard`, 'Backend', {
       method: 'PUT',
       headers: {
@@ -695,7 +691,7 @@ async function uploadImage(panel) {
     formData.append('image', file);
     formData.append('label', panel.querySelector('#quick-image-label').value.trim() || file.name);
 
-    const base = getEditorApiBase(panel);
+    const base = getEditorApiBase();
     const result = await fetchJson(`${base}/api/uploads`, 'Upload', {
       method: 'POST',
       body: formData,

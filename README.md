@@ -304,3 +304,32 @@ Starý projekt zůstane v archivu a hlavní stránka ukáže nový aktivní proj
 Teď je nejrychlejší řešení ukládat obrázky přímo na PythonAnywhere do `pythonanywhere/storage/uploads/`. Pro osobní projektové dashboardy je to jednodušší než S3.
 
 S3 / S3-compatible storage dává smysl později, pokud bude obrázků hodně, budou velké, nebo budeš chtít oddělit soubory od PythonAnywhere.
+
+## Poznámka ke git aliasu `forcepush`
+
+Pokud na mobilu používáš alias, který na `main` merguje větev `origin/neco` a při konfliktu chceš automaticky přijmout **příchozí změny z té mergované větve**, používej `--theirs`, ne `--ours`.
+
+Při příkazu:
+
+```bash
+git checkout main
+git merge origin/nazev-vetve
+```
+
+znamená:
+
+- `--ours` = nech lokální aktuální větev `main`, tedy zahodíš konfliktní změny z `origin/nazev-vetve`,
+- `--theirs` = vezmi konfliktní změny z `origin/nazev-vetve`, tedy to odpovídá „accept incoming changes“.
+
+Bezpečnější varianta tvého aliasu by tedy měla používat `--theirs`:
+
+```bash
+git config --global alias.forcepush '!f() { git checkout main && git pull origin main && git merge origin/$1 || { git checkout --theirs . && git add . && git commit -m "Resolve conflicts by accepting incoming changes"; }; git push origin main; }; f'
+```
+
+Pozor: tenhle alias je pořád dost ostrý nástroj. Když ho použiješ špatně, můžeš si přepsat práci na `main`. Před použitím je dobré dát aspoň:
+
+```bash
+git status
+git branch --show-current
+```
