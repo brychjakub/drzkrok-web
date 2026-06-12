@@ -15,6 +15,17 @@ Cíl: rychle vidět, co teď řeším, co je později, co je hotovo, mapu, odkaz
 
 Prakticky to znamená: web je všude stejný podle posledního commitu v GitHubu. Není to živá databáze, ale je to spolehlivé bez PythonAnywhere a bez API komunikace.
 
+## Jde to dynamicky čistě přes GitHub?
+
+Ano, ale ne jen pomocí jQuery nebo obyčejného JavaScriptu na GitHub Pages. GitHub Pages je statický hosting: umí poslat `index.html`, `script.js`, `style.css` a `data.json`, ale neumí sám od sebe přepsat soubor v repozitáři. K zápisu je vždy potřeba některá zapisovací vrstva:
+
+- **GitHub API** – stránka by přes `fetch` nebo jQuery poslala změnu do GitHubu a GitHub by udělal commit do `data.json`. Po technické stránce to jde bez vlastního backendu, ale už je to API komunikace a potřebuje přihlášení/token. Token se nesmí natvrdo uložit do veřejného `config.js`, protože by kdokoliv mohl zapisovat do repozitáře.
+- **GitHub Actions** – změnu by šlo poslat workflow, které přepíše `data.json` a commitne ho. I to ale potřebuje bezpečný způsob autorizace požadavku.
+- **Backend / serverless funkce** – bezpečnější klasická cesta, protože tajný token zůstane na serveru, ne v prohlížeči.
+- **Ruční commit staženého `data.json`** – současný nejbezpečnější režim bez backendu, bez tokenu v prohlížeči a bez externí API komunikace mimo načtení GitHub Pages.
+
+Doporučení: pokud firemní politika dovolí komunikaci na `api.github.com`, nejlepší „čistě GitHub“ automatizace je GitHub API s jemně omezeným tokenem pouze pro zápis do konkrétního repozitáře/souboru. Pokud firemní politika blokuje i API volání, automatický zápis ze statické stránky možný není; pak zůstává ruční commit nebo lokální režim jen pro jedno zařízení.
+
 ## Doporučený workflow
 
 1. Otevři dashboard na GitHub Pages.
