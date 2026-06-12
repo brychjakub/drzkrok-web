@@ -518,8 +518,6 @@ function switchProject(projectId) {
   refreshDashboard(dashboardData);
   saveToStorage();
   clearTimeout(saveTimer);
-  setMessage(`Otevřený projekt: ${project.title || 'Bez názvu'}.`);
-  saveTimer = setTimeout(clearMessage, 2200);
 }
 
 function createEmptyProject(title = '') {
