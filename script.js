@@ -334,15 +334,20 @@ function renderProjectSwitcher(data) {
 
   if (projects.length <= 1 && !editMode) return '';
 
+  const canDelete = editMode && projects.length > 1;
   const buttons = projects
     .map((project) => {
       const isActive = project.id === data.activeProjectId;
       const statusLabel = isActive ? 'otevřený' : (project.status === 'archived' ? 'uložený' : 'další');
+      const title = escapeHtml(project.title || 'Bez názvu');
       return `
-        <button class="project-tab${isActive ? ' is-active' : ''}" type="button" data-switch-project="${escapeHtml(project.id)}" aria-pressed="${isActive}">
-          <span>${escapeHtml(project.title || 'Bez názvu')}</span>
-          <small>${escapeHtml(project.dateRange || statusLabel)}</small>
-        </button>
+        <div class="project-tab-row">
+          <button class="project-tab${isActive ? ' is-active' : ''}" type="button" data-switch-project="${escapeHtml(project.id)}" aria-pressed="${isActive}">
+            <span>${title}</span>
+            <small>${escapeHtml(project.dateRange || statusLabel)}</small>
+          </button>
+          ${editMode ? `<button class="project-delete-button" type="button" data-delete-project="${escapeHtml(project.id)}"${canDelete ? '' : ' disabled'} aria-label="Smazat projekt ${title}">×</button>` : ''}
+        </div>
       `;
     })
     .join('');
@@ -522,6 +527,33 @@ function addProject(title) {
   setMessage('Nový projekt je založený. Uprav název, termín a první úkol, pak klikni „Uložit“.');
 }
 
+function deleteProject(projectId) {
+  if (!dashboardData || !Array.isArray(dashboardData.projects)) return;
+
+  const projectIndex = dashboardData.projects.findIndex((project) => project.id === projectId);
+  if (projectIndex === -1) return;
+
+  if (dashboardData.projects.length <= 1) {
+    setMessage('Poslední projekt nejde smazat. Vytvoř nejdřív jiný projekt.', 'error');
+    return;
+  }
+
+  const project = dashboardData.projects[projectIndex];
+  const title = project.title || 'Bez názvu';
+  if (!window.confirm(`Opravdu smazat projekt „${title}“? Tahle akce smaže i jeho úkoly, odkazy a obrázky.`)) return;
+
+  dashboardData.projects.splice(projectIndex, 1);
+
+  if (dashboardData.activeProjectId === projectId) {
+    const nextProject = dashboardData.projects[Math.min(projectIndex, dashboardData.projects.length - 1)];
+    dashboardData.activeProjectId = nextProject.id;
+  }
+
+  refreshDashboard(dashboardData);
+  saveDashboard();
+  setMessage(`Projekt „${title}“ je smazaný.`);
+}
+
 async function loadDashboard() {
   setMessage('Načítám projekt…');
 
@@ -623,6 +655,10 @@ function removeLink(owner, index) {
 function bindProjectSwitching() {
   document.querySelectorAll('[data-switch-project]').forEach((button) => {
     button.addEventListener('click', () => switchProject(button.dataset.switchProject));
+  });
+
+  document.querySelectorAll('[data-delete-project]').forEach((button) => {
+    button.addEventListener('click', () => deleteProject(button.dataset.deleteProject));
   });
 }
 
@@ -763,7 +799,8 @@ function createInlineEditor() {
         <summary>Projekty</summary>
         <label>Název nového projektu<input id="quick-project-title" placeholder="Třeba Dovolená 2026" /></label>
         <button id="quick-add-project" type="button">Vytvořit projekt</button>
-        <p class="edit-hint">Staré projekty zůstanou v přepínači nahoře. Přepnutí se uloží v tomhle prohlížeči.</p>
+        <button id="quick-delete-project" class="quick-danger-button" type="button">Smazat otevřený projekt</button>
+        <p class="edit-hint">Staré projekty zůstanou v přepínači nahoře. Přepnutí se uloží v tomhle prohlížeči. Mazání se ještě zeptá na potvrzení.</p>
       </details>
       <details>
         <summary>Přenos dat</summary>
@@ -782,6 +819,7 @@ function createInlineEditor() {
   const saveButton = panel.querySelector('#quick-save');
   const uploadButton = panel.querySelector('#quick-upload');
   const addProjectButton = panel.querySelector('#quick-add-project');
+  const deleteProjectButton = panel.querySelector('#quick-delete-project');
   const projectTitleInput = panel.querySelector('#quick-project-title');
   const exportButton = panel.querySelector('#quick-export');
   const importInput = panel.querySelector('#quick-import-file');
@@ -806,6 +844,7 @@ function createInlineEditor() {
     const modeButton = quickEditorPanel?.querySelector('#quick-edit-mode');
     if (modeButton) modeButton.textContent = 'Vypnout úpravy';
   });
+  deleteProjectButton.addEventListener('click', () => deleteProject(dashboardData?.activeProjectId));
   exportButton.addEventListener('click', exportJson);
   importInput.addEventListener('change', () => importJson(importInput.files[0]));
   resetButton.addEventListener('click', resetLocalData);
