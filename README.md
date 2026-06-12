@@ -1,31 +1,59 @@
-# Drž krok – statický projektový dashboard
+# Drž krok – GitHub projektový dashboard
 
-Jednoduchý osobní dashboard pro **jeden aktivní projekt**. Aktuální startovací projekt je „Výlet na ferraty“ v termínu **31. 7. – 2. 8. 2026**.
+Jednoduchý osobní dashboard pro projekty. Aktuální startovací projekt je „Výlet na ferraty“ v termínu **31. 7. – 2. 8. 2026**.
 
-Cíl: rychle vidět, co teď řeším, co je později, co je hotovo, mapu, odkazy a screenshoty. Žádná Jira, žádný backend, žádná databáze.
+Cíl: rychle vidět, co teď řeším, co je později, co je hotovo, mapu, odkazy a screenshoty. Výchozí produkční režim je čistý **GitHub Pages bez backendu**, aby fungoval i tam, kde firemní politika blokuje API komunikaci.
 
-## GitHub Pages verze
+## Jak se data synchronizují bez backendu
 
-Tahle verze je připravená pro GitHub Pages a je čistě statická:
+Čistě na GitHubu nejde zapisovat změny ze stránky přímo do repozitáře bez API nebo backendu. Proto je zdroj pravdy soubor `data.json` v repozitáři:
 
-- `index.html`
-- `style.css`
-- `script.js`
-- `data.json`
-- `config.js`
+- každé zařízení načítá při otevření aktuální `data.json`,
+- běžný `localStorage` není ve výchozím režimu zdroj pravdy,
+- změny se projeví na mobilu, firemním PC i dalších zařízeních až po commitu/pushi nového `data.json`,
+- tlačítko **Uložit** stáhne připravený `data.json`, který nahraješ/commitneš do GitHubu.
 
-Není tu PythonAnywhere, Flask, login ani serverové uploady. Firemní notebook tedy nemusí otevírat PythonAnywhere.
+Prakticky to znamená: web je všude stejný podle posledního commitu v GitHubu. Není to živá databáze, ale je to spolehlivé bez PythonAnywhere a bez API komunikace.
 
-## Jak funguje ukládání
+## Doporučený workflow
 
-GitHub Pages neumí zapisovat soubory na server. Proto dashboard ukládá změny do `localStorage` v konkrétním prohlížeči.
+1. Otevři dashboard na GitHub Pages.
+2. Klikni **Upravit → Zapnout úpravy**.
+3. Proveď změny.
+4. Klikni **Uložit**.
+5. Prohlížeč stáhne nový `data.json`.
+6. V GitHubu nahraď původní `data.json` tím staženým souborem a commitni změnu.
+7. Po doběhnutí GitHub Pages se stejná data načtou na všech zařízeních.
 
-Prakticky:
+Alternativa bez editace na stránce: otevři `data.json` přímo v GitHubu, klikni na editaci souboru, uprav JSON a commitni.
 
-- na stejném zařízení a ve stejném prohlížeči změny zůstanou,
-- na jiném zařízení je neuvidíš automaticky,
-- pro přenos použij v panelu **Upravit → Přenos dat → Export JSON** a pak **Import JSON** na jiném zařízení,
-- pokud chceš změnit výchozí data pro všechny, uprav `data.json` v repozitáři a pushni ho na GitHub.
+## Volitelný lokální režim pro jeden prohlížeč
+
+Kdybys někdy chtěl dočasně ukládat změny jen v jednom prohlížeči, nastav v `config.js`:
+
+```js
+window.DRZKROK_CONFIG = {
+  useBackend: false,
+  useLocalStorage: true,
+  apiBaseUrl: '',
+};
+```
+
+To ale znovu znamená, že mobil a firemní PC můžou vidět rozdílná data. Pro synchronizaci mezi zařízeními nech `useLocalStorage: false`.
+
+## Volitelný backend režim
+
+V repozitáři zůstává i Flask backend pro PythonAnywhere. Pokud bys ho někdy chtěl znovu použít, nastav v `config.js`:
+
+```js
+window.DRZKROK_CONFIG = {
+  useBackend: true,
+  useLocalStorage: false,
+  apiBaseUrl: 'https://tvoje-jmeno.pythonanywhere.com',
+};
+```
+
+Ve firemní síti to ale může selhat, pokud politika blokuje API komunikaci.
 
 ## Co jde upravit přímo na stránce
 
@@ -41,7 +69,7 @@ V edit módu můžeš:
 - přidat/smazat obrázky nebo screenshoty,
 - exportovat/importovat celý JSON.
 
-Po změnách klikni **Uložit**.
+Po změnách klikni **Uložit** a commitni stažený `data.json`.
 
 ## Odkazy bez JSONu
 
@@ -58,7 +86,7 @@ Můžeš napsat i jen `maps.google.com`; při zobrazení se z toho udělá klika
 
 V panelu **Upravit → Nahrát obrázek** vybereš soubor a klikneš **Přidat obrázek**.
 
-Obrázek se uloží do prohlížeče jako data URL. Pro pár screenshotů je to v pohodě. Kdyby obrázků bylo hodně, je lepší dávat do dashboardu běžné URL odkazy na obrázky uložené jinde.
+Obrázek se vloží do dashboardových dat jako data URL. Po kliknutí na **Uložit** se stáhne nový `data.json`; po commitu do GitHubu bude obrázek dostupný i na ostatních zařízeních. Pro pár screenshotů je to v pohodě. Kdyby obrázků bylo hodně, je lepší dávat do dashboardu běžné URL odkazy na obrázky uložené jinde.
 
 ## Lokální spuštění
 
@@ -72,18 +100,11 @@ Pak otevři:
 http://127.0.0.1:4173/
 ```
 
-## Nasazení na GitHub Pages
-
-1. Pushni repo na GitHub.
-2. V GitHubu otevři **Settings → Pages**.
-3. Source nastav na větev `main` a složku `/root`.
-4. Ulož.
-5. Otevři URL, kterou GitHub Pages zobrazí.
-
 ## Soubory
 
 - `index.html` – stránka dashboardu.
 - `style.css` – vzhled.
-- `script.js` – vykreslení, editace a localStorage ukládání.
-- `data.json` – výchozí data.
-- `config.js` – kompatibilní statická konfigurace.
+- `script.js` – vykreslení, editace a export/import dat.
+- `data.json` – hlavní zdroj dat pro GitHub Pages režim.
+- `config.js` – přepínač GitHub/localStorage/backend režimu.
+- `pythonanywhere/app.py` – volitelný Flask backend, pokud ho někdy znovu zapneš.
