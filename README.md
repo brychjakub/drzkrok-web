@@ -14,8 +14,8 @@ Princip: žádná Jira, žádný plánovač. Jeden projekt, rychlé odkazy, mapa
 - Archiv starších projektů schovaný dole.
 - Rychlá editace přímo na hlavní stránce tlačítkem **Upravit**.
 - Pokročilejší JSON editace přes `admin.html`.
-- Statický provoz na GitHub Pages bez backendu.
-- Volitelný Flask backend pro PythonAnywhere, pokud budeš chtít znovu online editaci a uploady.
+- Frontend může běžet na GitHub Pages.
+- Trvalé ukládání změn běží přes Flask backend na PythonAnywhere, aby se změny propsaly na mobil, PC i další zařízení.
 
 ## Soubory
 
@@ -24,8 +24,8 @@ Princip: žádná Jira, žádný plánovač. Jeden projekt, rychlé odkazy, mapa
 - `index.html` – veřejný projektový dashboard.
 - `style.css` – minimalistický responzivní styl.
 - `script.js` – načítání projektu, vykreslení karet, mapy, obrázků, archivu a rychlá inline editace.
-- `data.json` – hlavní data pro GitHub Pages.
-- `config.js` – konfigurace provozu. Výchozí stav má `useBackend: false`, takže GitHub Pages čte přímo `data.json`.
+- `data.json` – lokální záložní data, když backend nejede.
+- `config.js` – konfigurace provozu. Výchozí stav míří z GitHub Pages na PythonAnywhere backend, protože statický hosting sám neumí trvale zapisovat změny.
 
 ### Admin
 
@@ -43,9 +43,25 @@ Princip: žádná Jira, žádný plánovač. Jeden projekt, rychlé odkazy, mapa
 - `pythonanywhere/wsgi.py` – import Flask aplikace.
 
 
-## GitHub Pages
+## GitHub Pages + ukládání změn
 
-Projekt je připravený jako statický web pro GitHub Pages. Výchozí `config.js` má vypnutý backend, takže homepage načítá data přímo z `data.json` a nevolá PythonAnywhere API.
+GitHub Pages je jen statický hosting. Umí zobrazit HTML/CSS/JS, ale neumí z prohlížeče změnit `data.json` v repozitáři. Pokud chceš kliknout **Upravit → Uložit** a mít změnu hned na mobilu, PC i jinde, backend není volitelný – musí běžet API, které změnu zapíše.
+
+Aktuální nastavení proto používá GitHub Pages jako veřejný frontend a PythonAnywhere jako zapisovací backend:
+
+```js
+window.DRZKROK_CONFIG = {
+  apiBaseUrl: 'https://brych.pythonanywhere.com',
+  useBackend: true,
+};
+```
+
+Co se tím stane:
+
+- GitHub Pages načte živá data z `https://brych.pythonanywhere.com/api/dashboard`.
+- Tlačítko **Upravit** po přihlášení ukládá přes `PUT /api/dashboard`.
+- Přihlášení vrací i uložený autorizační token, takže editor nemá znovu ukazovat login jen proto, že běží z jiné domény než PythonAnywhere.
+- Když backend nejede, veřejná stránka umí spadnout na záložní `data.json`, ale v tom režimu nejde trvale ukládat.
 
 ### Zapnutí Pages v GitHubu
 
@@ -54,14 +70,15 @@ Projekt je připravený jako statický web pro GitHub Pages. Výchozí `config.j
 3. Jako source vyber **GitHub Actions**.
 4. Workflow `.github/workflows/pages.yml` po pushi na `main` nahraje statické soubory na Pages.
 
-### Úprava dat na GitHub Pages
+### Důležité pro PythonAnywhere backend
 
-GitHub Pages neumí zapisovat soubory přímo z prohlížeče. Máš dvě jednoduché možnosti:
+Ve WSGI musí zůstat nastavené `DRZKROK_ADMIN_USERNAME`, `DRZKROK_ADMIN_PASSWORD_HASH` a `DRZKROK_SESSION_SECRET`. Pro GitHub Pages frontend můžeš volitelně omezit CORS jen na konkrétní Pages doménu:
 
-- upravit `data.json` přímo v GitHubu a commitnout změnu,
-- otevřít `admin.html`, upravit JSON, kliknout na **Stáhnout data.json** a stažený soubor nahrát/commitnout do repozitáře.
+```python
+os.environ["DRZKROK_ALLOWED_ORIGIN"] = "https://tvojegithubjmeno.github.io"
+```
 
-Po commitu se Pages automaticky přegenerují.
+Když si nejsi jistý přesnou Pages adresou, může dočasně zůstat výchozí `*`; backend si při požadavku s přihlášením vrátí konkrétní `Origin`.
 
 ## Lokální zobrazení bez backendu
 
@@ -77,7 +94,7 @@ Pak otevři:
 http://127.0.0.1:4173/
 ```
 
-Bez Flask backendu stránka rovnou ukáže lokální `data.json`, stejně jako na GitHub Pages.
+Bez Flask backendu stránka ukáže lokální `data.json`, ale změny nepůjdou trvale uložit na všechna zařízení.
 
 ## Lokální spuštění s backendem
 
@@ -241,7 +258,7 @@ window.DRZKROK_CONFIG = {
 };
 ```
 
-Pro GitHub Pages naopak nech výchozí `useBackend: false`. Prázdné `apiBaseUrl` má smysl hlavně u PythonAnywhere backendu na stejné doméně.
+Když frontend běží přímo na PythonAnywhere stejné domény, může být `apiBaseUrl` prázdné. Když frontend běží na GitHub Pages a backend na PythonAnywhere, nastav `apiBaseUrl` na plnou adresu backendu, třeba `https://brych.pythonanywhere.com`.
 
 ### 8. Jak pak dělat aktualizace kódu
 

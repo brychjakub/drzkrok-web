@@ -5,6 +5,7 @@ import uuid
 from pathlib import Path
 
 from flask import Flask, jsonify, make_response, request, send_from_directory, session, url_for
+from itsdangerous import BadSignature, SignatureExpired, URLSafeTimedSerializer
 from werkzeug.security import check_password_hash
 from werkzeug.utils import secure_filename
 
@@ -20,6 +21,7 @@ ADMIN_USERNAME = os.environ.get("DRZKROK_ADMIN_USERNAME")
 ADMIN_PASSWORD_HASH = os.environ.get("DRZKROK_ADMIN_PASSWORD_HASH")
 SESSION_SECRET = os.environ.get("DRZKROK_SESSION_SECRET")
 ALLOWED_ORIGIN = os.environ.get("DRZKROK_ALLOWED_ORIGIN", "*")
+AUTH_TOKEN_MAX_AGE = int(os.environ.get("DRZKROK_AUTH_TOKEN_MAX_AGE", 60 * 60 * 24 * 30))
 REQUIRE_LOGIN_TO_VIEW = os.environ.get("DRZKROK_REQUIRE_LOGIN_TO_VIEW", "false").lower() in {"1", "true", "yes", "on"}
 MAX_UPLOAD_BYTES = int(os.environ.get("DRZKROK_MAX_UPLOAD_BYTES", 8 * 1024 * 1024))
 ALLOWED_EXTENSIONS = {"gif", "jpeg", "jpg", "png", "webp"}
@@ -56,6 +58,8 @@ DEFAULT_DATA = {
 
 
 app.config["MAX_CONTENT_LENGTH"] = MAX_UPLOAD_BYTES
+app.config["SESSION_COOKIE_SAMESITE"] = os.environ.get("DRZKROK_SESSION_COOKIE_SAMESITE", "None")
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("DRZKROK_SESSION_COOKIE_SECURE", "true").lower() in {"1", "true", "yes", "on"}
 if SESSION_SECRET:
     app.secret_key = SESSION_SECRET
 else:
@@ -64,9 +68,26 @@ else:
     app.secret_key = os.urandom(32)
 
 
+def origin_is_allowed(origin):
+    if not origin:
+        return False
+
+    allowed_origins = {item.strip() for item in ALLOWED_ORIGIN.split(",") if item.strip()}
+    return "*" in allowed_origins or origin in allowed_origins
+
+
 def add_cors(response):
-    response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
-    response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    origin = request.headers.get("Origin")
+
+    if origin and origin_is_allowed(origin):
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers.add("Vary", "Origin")
+    elif ALLOWED_ORIGIN != "*":
+        response.headers["Access-Control-Allow-Origin"] = ALLOWED_ORIGIN
+    else:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+
+    response.headers["Access-Control-Allow-Headers"] = "Authorization, Content-Type"
     response.headers["Access-Control-Allow-Methods"] = "GET, PUT, POST, DELETE, OPTIONS"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
@@ -172,8 +193,42 @@ def credentials_are_valid(username, password):
     return check_password_hash(ADMIN_PASSWORD_HASH, password)
 
 
+def auth_serializer():
+    if not SESSION_SECRET:
+        return None
+
+    return URLSafeTimedSerializer(SESSION_SECRET, salt="drzkrok-admin-token")
+
+
+def create_auth_token(username):
+    serializer = auth_serializer()
+    if not serializer:
+        return ""
+
+    return serializer.dumps({"username": username})
+
+
+def token_is_authorized():
+    header = request.headers.get("Authorization", "")
+    scheme, _, token = header.partition(" ")
+
+    if scheme.lower() != "bearer" or not token:
+        return False
+
+    serializer = auth_serializer()
+    if not serializer:
+        return False
+
+    try:
+        payload = serializer.loads(token, max_age=AUTH_TOKEN_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        return False
+
+    return bool(auth_is_configured() and payload.get("username") == ADMIN_USERNAME)
+
+
 def is_authorized():
-    return bool(session.get("drzkrok_admin_authenticated"))
+    return bool(session.get("drzkrok_admin_authenticated") or token_is_authorized())
 
 
 def require_authorized():
@@ -225,7 +280,7 @@ def login():
     session.clear()
     session["drzkrok_admin_authenticated"] = True
     session["drzkrok_admin_username"] = username
-    return jsonify({"authenticated": True})
+    return jsonify({"authenticated": True, "token": create_auth_token(username)})
 
 
 @app.route("/api/logout", methods=["POST", "OPTIONS"])

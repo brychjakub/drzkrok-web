@@ -7,6 +7,7 @@ const stateMap = {
 const config = window.DRZKROK_CONFIG || {};
 const apiBaseUrl = (config.apiBaseUrl || '').replace(/\/$/, '');
 const shouldUseBackend = config.useBackend !== false;
+const authTokenKey = 'drzkrokAuthToken';
 const message = document.querySelector('#message');
 const projectOverview = document.querySelector('#project-overview');
 const projectSubtitle = document.querySelector('#project-subtitle');
@@ -67,6 +68,25 @@ function normalizeUrl(url = '') {
   if (!trimmed) return '';
   if (/^(https?:|mailto:|tel:)/i.test(trimmed)) return trimmed;
   return `https://${trimmed}`;
+}
+
+function getAuthToken() {
+  return localStorage.getItem(authTokenKey) || '';
+}
+
+function rememberAuthToken(token) {
+  if (token) localStorage.setItem(authTokenKey, token);
+}
+
+function withAuthHeaders(options = {}) {
+  const headers = new Headers(options.headers || {});
+  const token = getAuthToken();
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  return { ...options, headers };
 }
 
 
@@ -401,7 +421,8 @@ function validateData(data, sourceName) {
 }
 
 async function fetchJson(url, sourceName, options = {}) {
-  const response = await fetch(url, { cache: 'no-store', credentials: 'include', ...options });
+  const requestOptions = withAuthHeaders(options);
+  const response = await fetch(url, { cache: 'no-store', credentials: 'include', ...requestOptions });
 
   if (!response.ok) {
     const text = await response.text();
@@ -779,12 +800,13 @@ async function loginEditor(panel) {
       throw new Error('Vyplň uživatelské jméno i heslo.');
     }
 
-    await fetchJson(`${base}/api/login`, 'Přihlášení', {
+    const loginResult = await fetchJson(`${base}/api/login`, 'Přihlášení', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
 
+    rememberAuthToken(loginResult.token);
     isAuthenticated = true;
     authConfigured = true;
     panel.querySelector('#quick-password').value = '';

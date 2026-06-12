@@ -21,12 +21,32 @@ const savedUsername = localStorage.getItem('drzkrokAdminUsername');
 let isAuthenticated = false;
 let authConfigured = false;
 const shouldUseBackend = adminConfig.useBackend !== false;
+const authTokenKey = 'drzkrokAuthToken';
 
 apiInput.value = savedApiUrl || adminConfig.apiBaseUrl || '';
 usernameInput.value = savedUsername || '';
 
 function cleanApiUrl() {
   return apiInput.value.trim().replace(/\/$/, '');
+}
+
+function getAuthToken() {
+  return localStorage.getItem(authTokenKey) || '';
+}
+
+function rememberAuthToken(token) {
+  if (token) localStorage.setItem(authTokenKey, token);
+}
+
+function withAuthHeaders(options = {}) {
+  const headers = new Headers(options.headers || {});
+  const token = getAuthToken();
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  return { ...options, headers };
 }
 
 function downloadJson(payload) {
@@ -96,9 +116,10 @@ function validatePayload(payload) {
 
 async function fetchBackend(path, options = {}) {
   const apiUrl = cleanApiUrl();
+  const requestOptions = withAuthHeaders(options);
   const response = await fetch(`${apiUrl}${path}`, {
     credentials: 'include',
-    ...options,
+    ...requestOptions,
   });
 
   if (!response.ok) {
@@ -177,12 +198,13 @@ async function login() {
       throw new Error('Vyplň uživatelské jméno i heslo.');
     }
 
-    await fetchBackend('/api/login', {
+    const loginResult = await fetchBackend('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
 
+    rememberAuthToken(loginResult.token);
     isAuthenticated = true;
     authConfigured = true;
     updateAuthUi();
