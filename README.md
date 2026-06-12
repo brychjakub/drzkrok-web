@@ -19,6 +19,27 @@ Pokud na dvou zařízeních vidíš rozdílné věci, typicky je to tím, že st
 
 GitHub Pages neumí zapisovat soubory na server. Pokud bys někdy potřeboval čistě statický režim, přepni v `config.js` `useBackend` na `false`. Pak dashboard ukládá změny jen do `localStorage` v konkrétním prohlížeči.
 
+
+## Když vidíš GitHub Pages 404 místo dat
+
+Chyba s dlouhým HTML textem `There isn't a GitHub Pages site here` znamená, že frontend zkusil načíst `/api/dashboard` na GitHub Pages. GitHub Pages ale neumí spouštět Flask backend, takže tam žádné `/api/dashboard` není.
+
+Postup:
+
+1. Zjisti veřejnou URL PythonAnywhere aplikace, například `https://tvoje-jmeno.pythonanywhere.com`.
+2. Pokud chceš otevírat web přes GitHub Pages, nastav v `config.js`:
+
+   ```js
+   window.DRZKROK_CONFIG = {
+     useBackend: true,
+     apiBaseUrl: 'https://tvoje-jmeno.pythonanywhere.com',
+   };
+   ```
+
+3. Commitni a pushni změnu `config.js`.
+4. Na mobilu i PC otevři stejnou GitHub Pages URL a případně tvrdě obnov stránku, aby se načetl nový `config.js`.
+5. Alternativa: GitHub Pages vůbec nepoužívej a otevírej přímo PythonAnywhere URL. V tom případě může `apiBaseUrl` zůstat prázdné, protože frontend i API běží na stejné doméně.
+
 ## Co jde upravit přímo na stránce
 
 Klikni vpravo dole na **Upravit** a potom **Zapnout úpravy**.

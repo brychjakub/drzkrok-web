@@ -3,6 +3,8 @@ const appConfig = window.DRZKROK_CONFIG || {};
 const shouldUseBackend = appConfig.useBackend !== false;
 const apiBaseUrl = (appConfig.apiBaseUrl || '').replace(/\/$/, '');
 const authTokenKey = 'drzkrokAuthToken';
+const staticHostingDomains = ['github.io', 'pages.dev', 'netlify.app', 'vercel.app'];
+const isLikelyStaticHosting = staticHostingDomains.some((domain) => window.location.hostname.endsWith(domain));
 
 const stateMap = {
   now: { listId: 'now-list', label: 'Teď' },
@@ -508,7 +510,23 @@ function withAuthHeaders(options = {}) {
   };
 }
 
+function getBackendSetupHint() {
+  if (apiBaseUrl) return '';
+
+  if (isLikelyStaticHosting) {
+    return 'Web běží na statickém hostingu, takže /api/dashboard neexistuje. V config.js doplň apiBaseUrl na PythonAnywhere, nebo otevírej web přímo z PythonAnywhere.';
+  }
+
+  return 'Zkontroluj, že web otevíráš z PythonAnywhere backendu nebo že je v config.js vyplněné apiBaseUrl.';
+}
+
 async function fetchBackend(path, options = {}) {
+  const setupHint = getBackendSetupHint();
+
+  if (setupHint && isLikelyStaticHosting) {
+    throw new Error(setupHint);
+  }
+
   const response = await fetch(`${apiBaseUrl}${path}`, {
     cache: 'no-store',
     credentials: 'include',
@@ -516,7 +534,13 @@ async function fetchBackend(path, options = {}) {
   });
 
   if (!response.ok) {
+    const contentType = response.headers.get('content-type') || '';
     const text = await response.text();
+
+    if (contentType.includes('text/html') || /^\s*<!doctype html/i.test(text) || /^\s*<html/i.test(text)) {
+      throw new Error(setupHint || `Backend nevrátil JSON, ale HTML stránku se stavem ${response.status}. Pravděpodobně voláš špatnou adresu API.`);
+    }
+
     throw new Error(text || `Backend vrátil stav ${response.status}.`);
   }
 
