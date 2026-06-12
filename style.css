@@ -127,6 +127,111 @@ h1 {
   color: var(--error);
 }
 
+
+.project-switcher {
+  display: grid;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 16px;
+  border: 1px solid rgba(228, 221, 209, 0.82);
+  border-radius: calc(var(--radius) + 4px);
+  background: rgba(255, 253, 248, 0.58);
+  box-shadow: var(--shadow);
+}
+
+.project-switcher .eyebrow,
+.project-switcher h2 {
+  margin: 0;
+}
+
+.project-switcher .eyebrow {
+  margin-bottom: 6px;
+}
+
+.project-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.project-tab-row {
+  position: relative;
+}
+
+.project-tab {
+  display: grid;
+  gap: 2px;
+  min-width: min(100%, 12rem);
+  padding: 0.8rem 0.95rem;
+  border: 1px solid rgba(43, 34, 25, 0.13);
+  border-radius: 18px;
+  background: rgba(255, 250, 241, 0.84);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+  transition: transform 150ms ease, border-color 150ms ease, background-color 150ms ease;
+}
+
+.project-tab span {
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.project-tab small {
+  color: var(--muted);
+  font-size: 0.78rem;
+}
+
+.project-tab.is-active {
+  border-color: rgba(111, 95, 68, 0.46);
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(111, 95, 68, 0.14);
+}
+
+.project-tab:hover,
+.project-tab:focus-visible {
+  border-color: var(--accent);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.project-delete-button {
+  align-items: center;
+  background: #fff8f2;
+  border: 1px solid rgba(157, 47, 47, 0.22);
+  border-radius: 999px;
+  color: var(--error);
+  cursor: pointer;
+  display: inline-flex;
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 900;
+  height: 1.8rem;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  position: absolute;
+  right: -0.45rem;
+  top: -0.45rem;
+  transition: transform 150ms ease, background-color 150ms ease, border-color 150ms ease;
+  width: 1.8rem;
+}
+
+.project-delete-button:hover,
+.project-delete-button:focus-visible {
+  background: rgba(157, 47, 47, 0.1);
+  border-color: rgba(157, 47, 47, 0.42);
+  outline: none;
+  transform: translateY(-1px);
+}
+
+.project-delete-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+  transform: none;
+}
+
 .board {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -311,6 +416,11 @@ h2 {
 }
 
 @media (max-width: 560px) {
+  .project-tab-row,
+  .project-tab {
+    min-width: 100%;
+  }
+
   .page-shell {
     width: min(100% - 22px, 1180px);
     padding-top: 28px;
@@ -618,6 +728,16 @@ select {
   font-weight: 800;
   padding: 0.85rem 1rem;
   transition: transform 150ms ease, box-shadow 150ms ease, background-color 150ms ease;
+}
+
+.quick-editor .quick-danger-button {
+  background: rgba(157, 47, 47, 0.1);
+  color: var(--error);
+}
+
+.quick-editor .quick-danger-button:hover,
+.quick-editor .quick-danger-button:focus-visible {
+  background: rgba(157, 47, 47, 0.16);
 }
 
 .quick-edit-toggle {
