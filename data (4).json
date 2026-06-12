@@ -1,0 +1,121 @@
+{
+  "activeProjectId": "osobni-dashboard-start",
+  "projects": [
+    {
+      "id": "feraty-2026",
+      "status": "active",
+      "title": "Výlet na ferraty",
+      "subtitle": "Jeden konkrétní projekt. Rychle vidět, co řešit před odjezdem.",
+      "dateRange": "31. 7. – 2. 8. 2026",
+      "place": "Rakousko / ferraty",
+      "summary": "Krátký dashboard k výletu: příprava, odložené věci, hotovo, mapa, odkazy a screenshoty.",
+      "map": {
+        "label": "Mapa výletu",
+        "url": "https://maps.google.com/",
+        "embedUrl": ""
+      },
+      "links": [
+        {
+          "label": "Google Maps",
+          "url": "https://maps.google.com/"
+        }
+      ],
+      "images": [],
+      "items": [
+        {
+          "title": "Trasa a ferraty",
+          "stateGroup": "now",
+          "state": "vybrat konkrétní místa a náhradní variantu podle počasí",
+          "next": "doplnit finální mapu a odkazy na ferraty",
+          "note": "držet to jednoduché: jedna hlavní trasa, jedna záloha",
+          "links": [],
+          "category": "plán",
+          "status": "teď"
+        },
+        {
+          "title": "Ubytování",
+          "stateGroup": "now",
+          "state": "potvrdit spaní na 31. 7. – 2. 8.",
+          "next": "uložit potvrzení nebo screenshot do obrázků",
+          "note": "ať je adresa rychle dohledatelná z telefonu",
+          "links": [],
+          "category": "logistika",
+          "status": "teď"
+        },
+        {
+          "title": "Výbava",
+          "stateGroup": "now",
+          "state": "zkontrolovat ferratový set, helmu, boty, rukavice a batoh",
+          "next": "dopsat, co chybí koupit nebo půjčit",
+          "note": "žádný velký systém, jen nezapomenout zásadní věci",
+          "links": [],
+          "category": "věci",
+          "status": "teď"
+        },
+        {
+          "title": "Počasí",
+          "stateGroup": "later",
+          "state": "má smysl řešit až pár dní před odjezdem",
+          "next": "zkontrolovat předpověď v týdnu odjezdu",
+          "note": "podle počasí případně přehodit trasu",
+          "links": [],
+          "category": "kontrola",
+          "status": "později"
+        },
+        {
+          "title": "Jídlo a voda",
+          "stateGroup": "later",
+          "state": "zatím jen rámcově",
+          "next": "sepsat minimum před balením",
+          "note": "hlavně voda, něco rychlého a plán, kde se dá najíst",
+          "links": [],
+          "category": "praktické",
+          "status": "později"
+        },
+        {
+          "title": "Termín",
+          "stateGroup": "done",
+          "state": "31. 7. – 2. 8. 2026",
+          "next": "držet v kalendáři a nekomplikovat",
+          "note": "tohle je hlavní aktivní projekt dashboardu",
+          "links": [],
+          "category": "hotovo",
+          "status": "hotovo"
+        }
+      ]
+    },
+    {
+      "id": "osobni-dashboard-start",
+      "status": "archived",
+      "title": "Albanie",
+      "subtitle": "Původní startovací nástěnka.",
+      "dateRange": "Archiv",
+      "place": "drzkrok.cz",
+      "summary": "Schované pro návrat, nemaže se.",
+      "map": {
+        "label": "",
+        "url": "",
+        "embedUrl": ""
+      },
+      "links": [],
+      "images": [],
+      "items": [
+        {
+          "title": "Doména drzkrok.cz",
+          "stateGroup": "done",
+          "state": "zaplacená",
+          "next": "použít pro projektové dashboardy",
+          "note": "jednoduchá startovací stránka, ne další velký projekt",
+          "links": [
+            {
+              "label": "drzkrok.cz",
+              "url": "https://drzkrok.cz"
+            }
+          ],
+          "category": "doména",
+          "status": "hotovo"
+        }
+      ]
+    }
+  ]
+}
