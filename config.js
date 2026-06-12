@@ -1,4 +1,6 @@
-// GitHub Pages verze je čistě statická. Soubor zůstává jen kvůli kompatibilitě se starším HTML.
+// Produkční varianta používá PythonAnywhere backend jako jediné sdílené úložiště.
+// Díky tomu se stejná data načtou na mobilu, firemním PC i dalších zařízeních.
 window.DRZKROK_CONFIG = {
-  useBackend: false,
+  useBackend: true,
+  apiBaseUrl: '',
 };

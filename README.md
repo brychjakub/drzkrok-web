@@ -1,31 +1,23 @@
-# Drž krok – statický projektový dashboard
+# Drž krok – sdílený projektový dashboard
 
-Jednoduchý osobní dashboard pro **jeden aktivní projekt**. Aktuální startovací projekt je „Výlet na ferraty“ v termínu **31. 7. – 2. 8. 2026**.
+Jednoduchý osobní dashboard pro projekty. Aktuální startovací projekt je „Výlet na ferraty“ v termínu **31. 7. – 2. 8. 2026**.
 
-Cíl: rychle vidět, co teď řeším, co je později, co je hotovo, mapu, odkazy a screenshoty. Žádná Jira, žádný backend, žádná databáze.
+Cíl: rychle vidět, co teď řeším, co je později, co je hotovo, mapu, odkazy a screenshoty. Data se v produkci načítají z PythonAnywhere backendu, aby byla stejná na mobilu, firemním PC i dalších zařízeních.
 
-## GitHub Pages verze
+## PythonAnywhere / backend verze
 
-Tahle verze je připravená pro GitHub Pages a je čistě statická:
+Produkční nastavení používá backend jako jedno sdílené úložiště:
 
-- `index.html`
-- `style.css`
-- `script.js`
-- `data.json`
-- `config.js`
+- `config.js` má `useBackend: true`,
+- dashboard načítá data přes `/api/dashboard`,
+- tlačítko **Uložit** zapisuje změny zpět přes backend,
+- lokální `localStorage` už není zdroj pravdy pro dashboardová data.
 
-Není tu PythonAnywhere, Flask, login ani serverové uploady. Firemní notebook tedy nemusí otevírat PythonAnywhere.
+Pokud na dvou zařízeních vidíš rozdílné věci, typicky je to tím, že starší statická verze ukládala úpravy jen do `localStorage` konkrétního prohlížeče. Backend verze bere data ze sdíleného souboru/úložiště na PythonAnywhere.
 
-## Jak funguje ukládání
+## Statická GitHub Pages nouzová varianta
 
-GitHub Pages neumí zapisovat soubory na server. Proto dashboard ukládá změny do `localStorage` v konkrétním prohlížeči.
-
-Prakticky:
-
-- na stejném zařízení a ve stejném prohlížeči změny zůstanou,
-- na jiném zařízení je neuvidíš automaticky,
-- pro přenos použij v panelu **Upravit → Přenos dat → Export JSON** a pak **Import JSON** na jiném zařízení,
-- pokud chceš změnit výchozí data pro všechny, uprav `data.json` v repozitáři a pushni ho na GitHub.
+GitHub Pages neumí zapisovat soubory na server. Pokud bys někdy potřeboval čistě statický režim, přepni v `config.js` `useBackend` na `false`. Pak dashboard ukládá změny jen do `localStorage` v konkrétním prohlížeči.
 
 ## Co jde upravit přímo na stránce
 
@@ -58,32 +50,33 @@ Můžeš napsat i jen `maps.google.com`; při zobrazení se z toho udělá klika
 
 V panelu **Upravit → Nahrát obrázek** vybereš soubor a klikneš **Přidat obrázek**.
 
-Obrázek se uloží do prohlížeče jako data URL. Pro pár screenshotů je to v pohodě. Kdyby obrázků bylo hodně, je lepší dávat do dashboardu běžné URL odkazy na obrázky uložené jinde.
+Obrázek se vloží do dashboardových dat jako data URL a po kliknutí na **Uložit** se v backend režimu uloží na PythonAnywhere společně s projektem. Pro pár screenshotů je to v pohodě. Kdyby obrázků bylo hodně, je lepší dávat do dashboardu běžné URL odkazy na obrázky uložené jinde.
 
 ## Lokální spuštění
 
+Pro backend režim spusť Flask aplikaci z `pythonanywhere/app.py`:
+
 ```bash
-python3 -m http.server 4173
+python3 pythonanywhere/app.py
 ```
 
 Pak otevři:
 
 ```text
-http://127.0.0.1:4173/
+http://127.0.0.1:5000/
 ```
 
-## Nasazení na GitHub Pages
+Pokud chceš jen nouzově statickou verzi bez backendu, přepni v `config.js` `useBackend` na `false` a spusť:
 
-1. Pushni repo na GitHub.
-2. V GitHubu otevři **Settings → Pages**.
-3. Source nastav na větev `main` a složku `/root`.
-4. Ulož.
-5. Otevři URL, kterou GitHub Pages zobrazí.
+```bash
+python3 -m http.server 4173
+```
 
 ## Soubory
 
 - `index.html` – stránka dashboardu.
 - `style.css` – vzhled.
-- `script.js` – vykreslení, editace a localStorage ukládání.
-- `data.json` – výchozí data.
-- `config.js` – kompatibilní statická konfigurace.
+- `script.js` – vykreslení, editace a ukládání přes backend nebo statický fallback.
+- `data.json` – výchozí data pro statický fallback.
+- `config.js` – přepínač backend/statický režim.
+- `pythonanywhere/app.py` – Flask backend pro sdílená data, přihlášení a uploady.
