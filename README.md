@@ -1,88 +1,66 @@
-# Drž krok – projektový dashboard
+# Drž krok – statický projektový dashboard
 
-Rychlý osobní dashboard pro **jeden aktivní projekt**. Aktuální ukázkový projekt je „Výlet na ferraty“ v termínu **31. 7. – 2. 8. 2026**.
+Jednoduchý osobní dashboard pro **jeden aktivní projekt**. Aktuální startovací projekt je „Výlet na ferraty“ v termínu **31. 7. – 2. 8. 2026**.
 
-Princip: žádná Jira, žádný plánovač. Jeden projekt, rychlé odkazy, mapa, screenshoty, tři sloupce `Teď`, `Později`, `Hotovo` a schovaný archiv starších projektů.
+Cíl: rychle vidět, co teď řeším, co je později, co je hotovo, mapu, odkazy a screenshoty. Žádná Jira, žádný backend, žádná databáze.
 
-## Co to umí
+## GitHub Pages verze
 
-- Jeden hlavní aktivní projekt na homepage.
-- Tři jednoduché sekce: `Teď`, `Později`, `Hotovo`.
-- Mapa / odkaz na mapu.
-- Rychlé odkazy.
-- Obrázky a screenshoty.
-- Archiv starších projektů schovaný dole.
-- Rychlá editace přímo na hlavní stránce tlačítkem **Upravit**.
-- Pokročilejší JSON editace přes `admin.html`.
-- Frontend může běžet na GitHub Pages.
-- Trvalé ukládání změn běží přes Flask backend na PythonAnywhere, aby se změny propsaly na mobil, PC i další zařízení.
+Tahle verze je připravená pro GitHub Pages a je čistě statická:
 
-## Soubory
+- `index.html`
+- `style.css`
+- `script.js`
+- `data.json`
+- `config.js`
 
-### Veřejný web
+Není tu PythonAnywhere, Flask, login ani serverové uploady. Firemní notebook tedy nemusí otevírat PythonAnywhere.
 
-- `index.html` – veřejný projektový dashboard.
-- `style.css` – minimalistický responzivní styl.
-- `script.js` – načítání projektu, vykreslení karet, mapy, obrázků, archivu a rychlá inline editace.
-- `data.json` – lokální záložní data, když backend nejede.
-- `config.js` – konfigurace provozu. Výchozí stav míří z GitHub Pages na PythonAnywhere backend, protože statický hosting sám neumí trvale zapisovat změny.
+## Jak funguje ukládání
 
-### Admin
+GitHub Pages neumí zapisovat soubory na server. Proto dashboard ukládá změny do `localStorage` v konkrétním prohlížeči.
 
-- `admin.html` – pokročilejší stránka pro úpravu celého JSONu.
-- `admin.css` – styl adminu.
-- `admin.js` – načtení/uložení JSONu a upload obrázků.
+Prakticky:
 
-### PythonAnywhere backend
+- na stejném zařízení a ve stejném prohlížeči změny zůstanou,
+- na jiném zařízení je neuvidíš automaticky,
+- pro přenos použij v panelu **Upravit → Přenos dat → Export JSON** a pak **Import JSON** na jiném zařízení,
+- pokud chceš změnit výchozí data pro všechny, uprav `data.json` v repozitáři a pushni ho na GitHub.
 
-- `pythonanywhere/app.py` – Flask API a zároveň jednoduché servírování statických souborů z repozitáře.
-- `pythonanywhere/data.json` – startovací data, ze kterých se při prvním spuštění vytvoří pracovní kopie.
-- `pythonanywhere/storage/data.json` – skutečná pracovní data vytvořená backendem; jsou v `.gitignore`, aby je `git pull` nepřepsal.
-- `pythonanywhere/storage/uploads/` – nahrané obrázky; také mimo Git.
-- `pythonanywhere/requirements.txt` – závislosti.
-- `pythonanywhere/wsgi.py` – import Flask aplikace.
+## Co jde upravit přímo na stránce
 
+Klikni vpravo dole na **Upravit** a potom **Zapnout úpravy**.
 
-## GitHub Pages + ukládání změn
+V edit módu můžeš:
 
-GitHub Pages je jen statický hosting. Umí zobrazit HTML/CSS/JS, ale neumí z prohlížeče změnit `data.json` v repozitáři. Pokud chceš kliknout **Upravit → Uložit** a mít změnu hned na mobilu, PC i jinde, backend není volitelný – musí běžet API, které změnu zapíše.
+- přepsat název projektu, popis, termín, místo a mapu,
+- přidat/smazat úkoly ve sloupcích **Teď**, **Později**, **Hotovo**,
+- přesunout úkol do jiného sloupce,
+- upravit stav, další krok, poznámku, kategorii a status,
+- přidat/smazat odkazy bez JSONu,
+- přidat/smazat obrázky nebo screenshoty,
+- exportovat/importovat celý JSON.
 
-Aktuální nastavení proto používá GitHub Pages jako veřejný frontend a PythonAnywhere jako zapisovací backend:
+Po změnách klikni **Uložit**.
 
-```js
-window.DRZKROK_CONFIG = {
-  apiBaseUrl: 'https://brych.pythonanywhere.com',
-  useBackend: true,
-};
-```
+## Odkazy bez JSONu
 
-Co se tím stane:
+V edit módu v sekci **Rychlé odkazy** nebo v detailu úkolu klikni **Přidat odkaz**.
 
-- GitHub Pages načte živá data z `https://brych.pythonanywhere.com/api/dashboard`.
-- Tlačítko **Upravit** po přihlášení ukládá přes `PUT /api/dashboard`.
-- Přihlášení vrací i uložený autorizační token, takže editor nemá znovu ukazovat login jen proto, že běží z jiné domény než PythonAnywhere.
-- Když backend nejede, veřejná stránka umí spadnout na záložní `data.json`, ale v tom režimu nejde trvale ukládat.
+Vyplníš:
 
-### Zapnutí Pages v GitHubu
+- název,
+- URL.
 
-1. Pushni repozitář na GitHub.
-2. V repozitáři otevři **Settings → Pages**.
-3. Jako source vyber **GitHub Actions**.
-4. Workflow `.github/workflows/pages.yml` po pushi na `main` nahraje statické soubory na Pages.
+Můžeš napsat i jen `maps.google.com`; při zobrazení se z toho udělá klikací `https://maps.google.com`.
 
-### Důležité pro PythonAnywhere backend
+## Obrázky a screenshoty
 
-Ve WSGI musí zůstat nastavené `DRZKROK_ADMIN_USERNAME`, `DRZKROK_ADMIN_PASSWORD_HASH` a `DRZKROK_SESSION_SECRET`. Pro GitHub Pages frontend můžeš volitelně omezit CORS jen na konkrétní Pages doménu:
+V panelu **Upravit → Nahrát obrázek** vybereš soubor a klikneš **Přidat obrázek**.
 
-```python
-os.environ["DRZKROK_ALLOWED_ORIGIN"] = "https://tvojegithubjmeno.github.io"
-```
+Obrázek se uloží do prohlížeče jako data URL. Pro pár screenshotů je to v pohodě. Kdyby obrázků bylo hodně, je lepší dávat do dashboardu běžné URL odkazy na obrázky uložené jinde.
 
-Když si nejsi jistý přesnou Pages adresou, může dočasně zůstat výchozí `*`; backend si při požadavku s přihlášením vrátí konkrétní `Origin`.
-
-## Lokální zobrazení bez backendu
-
-V kořeni projektu spusť:
+## Lokální spuštění
 
 ```bash
 python3 -m http.server 4173
@@ -94,298 +72,18 @@ Pak otevři:
 http://127.0.0.1:4173/
 ```
 
-Bez Flask backendu stránka ukáže lokální `data.json`, ale změny nepůjdou trvale uložit na všechna zařízení.
-
-## Lokální spuštění s backendem
-
-```bash
-cd /workspace/drzkrok-web
-python3 -m pip install --user -r pythonanywhere/requirements.txt
-python3 pythonanywhere/app.py
-```
-
-Když spouštíš Flask ručně, můžeš si dočasně doplnit na konec `pythonanywhere/app.py` vlastní `app.run(...)`, ale na PythonAnywhere to potřeba není. PythonAnywhere spouští aplikaci přes WSGI.
-
-## PythonAnywhere: chci jen `git pull`
-
-Ano. Doporučený stav je:
-
-```text
-/home/tvojeuzivatelskejmeno/mysite/                  ← tvoje PythonAnywhere složka
-/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/       ← tady je naklonovaný celý Git repozitář
-/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/index.html
-/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/script.js
-/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/pythonanywhere/app.py
-/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/pythonanywhere/storage/data.json   ← tvoje živá data, nejsou v Gitu
-```
-
-Díky tomu pak aktualizace kódu vypadá jen takhle:
-
-```bash
-cd /home/tvojeuzivatelskejmeno/mysite/drzkrok-web
-git pull
-```
-
-Živá data a uploady jsou ve složce `drzkrok-web/pythonanywhere/storage/`, která je ignorovaná Gitem. `git pull` tedy aktualizuje kód, ale nesmaže ti projekty ani obrázky.
-
-## PythonAnywhere první nasazení krok za krokem
-
-### 1. Připrav web aplikaci
-
-1. Přihlas se do PythonAnywhere.
-2. Jdi na záložku **Web**.
-3. Pokud už projekt máš, nech ho být.
-4. Pokud web ještě nemáš, dej **Add a new web app**.
-5. Vyber **Manual configuration** nebo **Flask**.
-6. Vyber dostupnou Python verzi.
-
-### 2. Naklonuj repozitář do `mysite/drzkrok-web`
-
-V PythonAnywhere otevři **Bash** konzoli.
-
-Pokud složka `mysite` ještě neexistuje, vytvoř ji a naklonuj repo dovnitř:
-
-```bash
-cd /home/tvojeuzivatelskejmeno
-mkdir -p mysite
-cd mysite
-git clone TVOJE_GIT_URL
-```
-
-Pokud složka `mysite` už existuje, což je tvůj případ, udělej jen:
-
-```bash
-cd /home/tvojeuzivatelskejmeno/mysite
-git clone TVOJE_GIT_URL
-```
-
-Po tomhle vznikne složka podle názvu repozitáře:
-
-```text
-/home/tvojeuzivatelskejmeno/mysite/drzkrok-web
-```
-
-To je správně. Není potřeba klonovat repo přímo do `mysite`. Důležité je jen v dalších příkazech používat cestu do podsložky `drzkrok-web`.
-
-### 3. Nainstaluj závislosti
-
-```bash
-cd /home/tvojeuzivatelskejmeno/mysite/drzkrok-web
-python3 -m pip install --user -r pythonanywhere/requirements.txt
-```
-
-### 4. Nastav přihlášení jménem a heslem
-
-Stránka se nebude zapisovat přes žádný ručně opisovaný token. Backend používá normální přihlášení: **uživatelské jméno + heslo + serverová session cookie**. Stejné přihlášení může chránit i celé zobrazení dashboardu.
-
-Heslo neukládej do kódu v otevřené podobě. Do WSGI dáš jen hash hesla. Nejdřív si v PythonAnywhere Bash konzoli vygeneruj hash hesla a secret pro session:
-
-```bash
-cd /home/tvojeuzivatelskejmeno/mysite/drzkrok-web
-python3 - <<'PY'
-import getpass
-import secrets
-from werkzeug.security import generate_password_hash
-
-password = getpass.getpass('Zadej nové admin heslo: ')
-print('DRZKROK_ADMIN_PASSWORD_HASH=' + generate_password_hash(password))
-print('DRZKROK_SESSION_SECRET=' + secrets.token_urlsafe(48))
-PY
-```
-
-Výstup bude vypadat zhruba takhle:
-
-```text
-DRZKROK_ADMIN_PASSWORD_HASH=scrypt:32768:8:1$...
-DRZKROK_SESSION_SECRET=dlouhy-nahodny-retezec...
-```
-
-Tyhle dvě hodnoty si zkopíruješ do WSGI souboru společně s uživatelským jménem. Pokud chceš chránit i samotné zobrazení dashboardu, nech ve WSGI `DRZKROK_REQUIRE_LOGIN_TO_VIEW = "true"`.
-
-### 5. Nastav WSGI
-
-Na PythonAnywhere v záložce **Web** otevři **WSGI configuration file** a nastav ho takhle:
-
-```python
-import os
-import sys
-from pathlib import Path
-
-os.environ["DRZKROK_ADMIN_USERNAME"] = "admin"
-os.environ["DRZKROK_ADMIN_PASSWORD_HASH"] = "sem-vloz-vygenerovany-password-hash"
-os.environ["DRZKROK_SESSION_SECRET"] = "sem-vloz-vygenerovany-session-secret"
-os.environ["DRZKROK_REQUIRE_LOGIN_TO_VIEW"] = "true"
-
-project_home = Path('/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/pythonanywhere')
-if str(project_home) not in sys.path:
-    sys.path.insert(0, str(project_home))
-
-from app import app as application
-```
-
-Důležité: cesta `project_home` míří do podsložky `pythonanywhere` uvnitř naklonovaného repozitáře, tedy do `mysite/drzkrok-web/pythonanywhere`, protože Flask backend je v `mysite/drzkrok-web/pythonanywhere/app.py`.
-
-### 6. Reloadni web
-
-V záložce **Web** klikni **Reload**.
-
-Pak otevři:
-
-```text
-https://tvojeuzivatelskejmeno.pythonanywhere.com/api/health
-```
-
-Správná odpověď:
-
-```json
-{"ok": true}
-```
-
-### 7. Otevři dashboard
-
-Když PythonAnywhere servíruje i frontend, otevři:
-
-```text
-https://tvojeuzivatelskejmeno.pythonanywhere.com/
-```
-
-Pro PythonAnywhere backend nastav `config.js` takhle:
-
-```js
-window.DRZKROK_CONFIG = {
-  apiBaseUrl: '',
-  useBackend: true,
-};
-```
-
-Když frontend běží přímo na PythonAnywhere stejné domény, může být `apiBaseUrl` prázdné. Když frontend běží na GitHub Pages a backend na PythonAnywhere, nastav `apiBaseUrl` na plnou adresu backendu, třeba `https://brych.pythonanywhere.com`.
-
-### 8. Jak pak dělat aktualizace kódu
-
-V PythonAnywhere Bash konzoli:
-
-```bash
-cd /home/tvojeuzivatelskejmeno/mysite/drzkrok-web
-git pull
-```
-
-Pak v záložce **Web** klikni **Reload**.
-
-Hotovo.
-
-
-## Když backend na PythonAnywhere nefunguje
-
-Podle PythonAnywhere obrazovky může být **Source code** správně nastavený na:
-
-```text
-/home/tvojeuzivatelskejmeno/mysite/drzkrok-web
-```
-
-To ale samo o sobě Flask backend nespustí. Rozhodující je WSGI configuration file. V něm musí být `project_home` přesně:
-
-```python
-project_home = Path('/home/tvojeuzivatelskejmeno/mysite/drzkrok-web/pythonanywhere')
-```
-
-Pak klikni **Reload** a ověř:
-
-```text
-https://tvojeuzivatelskejmeno.pythonanywhere.com/api/health
-```
-
-Když se neukáže `{"ok": true}`, otevři na PythonAnywhere error log v záložce **Web**. Nejčastější chyby jsou špatná cesta ve WSGI, nenainstalovaný Flask, nebo chybějící `DRZKROK_ADMIN_USERNAME`, `DRZKROK_ADMIN_PASSWORD_HASH` a `DRZKROK_SESSION_SECRET`.
-
-## Jak upravovat přímo na stránce
-
-1. Otevři dashboard.
-2. Vpravo dole klikni **Upravit**. Panel je schovaný, dokud ho sám neotevřeš.
-3. Pokud už jsi přihlášený přes chráněnou stránku, další přihlášení se nezobrazuje. Když přihlášený nejsi, vyplň **uživatelské jméno a heslo** a klikni **Přihlásit**.
-4. Klikni **Zapnout úpravy**.
-5. Klikni přímo do názvu, popisku, termínu, místa, stavů nebo poznámek a přepiš text.
-6. Pro mapu a rychlé odkazy použij pole v horní projektové kartě.
-7. Úkoly můžeš přidat tlačítkem **Přidat do Teď/Později/Hotovo** a smazat tlačítkem **Smazat úkol** přímo v kartě.
-8. Odkazy se neupravují jako JSON: klikneš **Přidat odkaz**, vyplníš název a URL. Po uložení budou normálně klikatelné.
-9. Obrázky se v edit módu zobrazí jako jednotlivé karty. Každou můžeš přepsat nebo tlačítkem **Smazat z projektu** odebrat.
-10. Klikni **Uložit**.
-
-## Jak přidat nebo smazat úkol
-
-1. Vpravo dole klikni **Upravit**.
-2. Klikni **Zapnout úpravy**.
-3. Dole v každém sloupci je tlačítko **Přidat do Teď**, **Přidat do Později** nebo **Přidat do Hotovo**.
-4. Nový úkol se hned objeví jako karta. Přepiš název, stav, další krok, poznámku nebo sloupec.
-5. Když chceš úkol odstranit, v jeho detailu klikni **Smazat úkol**.
-6. Nakonec klikni **Uložit**.
-
-## Jak přidat odkaz bez JSONu
-
-1. V edit módu najdi sekci **Rychlé odkazy** nebo **Odkazy** uvnitř konkrétního úkolu.
-2. Klikni **Přidat odkaz**.
-3. Vyplň název a URL. Můžeš napsat i `maps.google.com`; aplikace z toho při zobrazení udělá klikací `https://maps.google.com`.
-4. Klikni **Uložit**.
-
-## Jak nahrát nebo smazat obrázek / screenshot přímo na stránce
-
-1. Vpravo dole klikni **Upravit**.
-2. Pokud nejsi přihlášený, přihlaš se jménem a heslem.
-3. Rozklikni **Nahrát obrázek**.
-4. Vyber soubor.
-5. Doplníš popisek.
-6. Klikni **Nahrát a přidat do projektu**.
-7. Klikni **Uložit**.
-
-Když chceš obrázek smazat, zapni edit mód, u obrázku klikni **Smazat z projektu** a potom klikni **Uložit**. Pokud jde o obrázek nahraný přes tento backend, pokusí se aplikace smazat i soubor z `pythonanywhere/storage/uploads/`.
-
-Obrázky se ukládají do `pythonanywhere/storage/uploads/` uvnitř `drzkrok-web`, takže je `git pull` nemaže.
-
-## Jak udělat nový projekt a starý schovat
-
-V `admin.html` nebo v JSON poli na stránce nastav starému projektu:
-
-```json
-"status": "archived"
-```
-
-Novému projektu dej nové `id` a nahoře změň:
-
-```json
-"activeProjectId": "nove-id-projektu"
-```
-
-Starý projekt zůstane v archivu a hlavní stránka ukáže nový aktivní projekt.
-
-## A co S3?
-
-Teď je nejrychlejší řešení ukládat obrázky přímo na PythonAnywhere do `pythonanywhere/storage/uploads/`. Pro osobní projektové dashboardy je to jednodušší než S3.
-
-S3 / S3-compatible storage dává smysl později, pokud bude obrázků hodně, budou velké, nebo budeš chtít oddělit soubory od PythonAnywhere.
-
-## Poznámka ke git aliasu `forcepush`
-
-Pokud na mobilu používáš alias, který na `main` merguje větev `origin/neco` a při konfliktu chceš automaticky přijmout **příchozí změny z té mergované větve**, používej `--theirs`, ne `--ours`.
-
-Při příkazu:
-
-```bash
-git checkout main
-git merge origin/nazev-vetve
-```
-
-znamená:
-
-- `--ours` = nech lokální aktuální větev `main`, tedy zahodíš konfliktní změny z `origin/nazev-vetve`,
-- `--theirs` = vezmi konfliktní změny z `origin/nazev-vetve`, tedy to odpovídá „accept incoming changes“.
-
-Bezpečnější varianta tvého aliasu by tedy měla používat `--theirs`:
-
-```bash
-git config --global alias.forcepush '!f() { git checkout main && git pull origin main && git merge origin/$1 || { git checkout --theirs . && git add . && git commit -m "Resolve conflicts by accepting incoming changes"; }; git push origin main; }; f'
-```
-
-Pozor: tenhle alias je pořád dost ostrý nástroj. Když ho použiješ špatně, můžeš si přepsat práci na `main`. Před použitím je dobré dát aspoň:
-
-```bash
-git status
-git branch --show-current
-```
+## Nasazení na GitHub Pages
+
+1. Pushni repo na GitHub.
+2. V GitHubu otevři **Settings → Pages**.
+3. Source nastav na větev `main` a složku `/root`.
+4. Ulož.
+5. Otevři URL, kterou GitHub Pages zobrazí.
+
+## Soubory
+
+- `index.html` – stránka dashboardu.
+- `style.css` – vzhled.
+- `script.js` – vykreslení, editace a localStorage ukládání.
+- `data.json` – výchozí data.
+- `config.js` – kompatibilní statická konfigurace.
