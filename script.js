@@ -1,6 +1,7 @@
 const STORAGE_KEY = 'drzkrok-dashboard-data';
 const appConfig = window.DRZKROK_CONFIG || {};
-const shouldUseBackend = appConfig.useBackend !== false;
+const shouldUseBackend = appConfig.useBackend === true;
+const shouldUseLocalStorage = appConfig.useLocalStorage === true;
 const apiBaseUrl = (appConfig.apiBaseUrl || '').replace(/\/$/, '');
 const authTokenKey = 'drzkrokAuthToken';
 const staticHostingDomains = ['github.io', 'pages.dev', 'netlify.app', 'vercel.app'];
@@ -221,7 +222,7 @@ function renderImages(images = []) {
 
     return `
       ${imageEditor ? `<div class="image-edit-grid">${imageEditor}</div>` : '<p class="empty-links">Zatím žádné obrázky ani screenshoty.</p>'}
-      <p class="edit-hint">${shouldUseBackend ? 'Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ zůstane uložený na backendu.' : 'Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ zůstane uložený v tomhle prohlížeči.'}</p>
+      <p class="edit-hint">${shouldUseBackend ? 'Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ zůstane uložený na backendu.' : 'Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ stáhni data.json a commitni ho do GitHubu.'}</p>
     `;
   }
 
@@ -601,9 +602,15 @@ function switchProject(projectId) {
 
   dashboardData.activeProjectId = project.id;
   refreshDashboard(dashboardData);
-  persistDashboard({ silent: true }).catch((error) => {
-    setMessage(`Přepnutí projektu se nepodařilo uložit na backend: ${error.message}`, 'error');
-  });
+
+  if (shouldUseBackend) {
+    persistDashboard({ silent: true }).catch((error) => {
+      setMessage(`Přepnutí projektu se nepodařilo uložit na backend: ${error.message}`, 'error');
+    });
+  } else if (shouldUseLocalStorage) {
+    saveToStorage();
+  }
+
   clearTimeout(saveTimer);
 }
 
@@ -669,7 +676,7 @@ async function loadDashboard() {
   setMessage(shouldUseBackend ? 'Načítám projekt z backendu…' : 'Načítám projekt…');
 
   try {
-    const data = shouldUseBackend ? await loadFromBackend() : (loadFromStorage() || await loadFromLocalFile());
+    const data = shouldUseBackend ? await loadFromBackend() : ((shouldUseLocalStorage && loadFromStorage()) || await loadFromLocalFile());
     refreshDashboard(data);
     clearMessage();
   } catch (error) {
@@ -820,7 +827,8 @@ async function persistDashboard({ silent = false } = {}) {
   if (!dashboardData) return false;
 
   if (!shouldUseBackend) {
-    saveToStorage();
+    if (shouldUseLocalStorage) saveToStorage();
+    downloadJson(dashboardData);
     return true;
   }
 
@@ -840,7 +848,7 @@ async function saveDashboard() {
 
   try {
     await persistDashboard();
-    setMessage(shouldUseBackend ? 'Uloženo na backendu. Změny uvidíš i na mobilu a firemním PC.' : 'Uloženo v tomhle prohlížeči. Pro přenos na jiné zařízení použij Export JSON.');
+    setMessage(shouldUseBackend ? 'Uloženo na backendu. Změny uvidíš i na mobilu a firemním PC.' : 'Stažený data.json commitni do GitHubu. Po pushi se stejná data načtou na všech zařízeních.');
     saveTimer = setTimeout(clearMessage, 2600);
   } catch (error) {
     setMessage(`Uložení selhalo: ${error.message}`, 'error');
@@ -899,7 +907,7 @@ function importJson(file) {
       const data = validateData(JSON.parse(reader.result), 'Importovaný JSON');
       refreshDashboard(data);
       await persistDashboard();
-      setMessage(shouldUseBackend ? 'Import hotový a uložený na backendu.' : 'Import hotový a uložený v tomhle prohlížeči.');
+      setMessage(shouldUseBackend ? 'Import hotový a uložený na backendu.' : 'Import hotový. Stažený data.json commitni do GitHubu, aby se projevil všude.');
     } catch (error) {
       setMessage(`Import selhal: ${error.message}`, 'error');
     }
@@ -910,7 +918,7 @@ function importJson(file) {
 function resetLocalData() {
   localStorage.removeItem(STORAGE_KEY);
   loadDashboard();
-  setMessage(shouldUseBackend ? 'Lokální kopie smazaná. Znovu se načítají data z backendu.' : 'Lokální úpravy smazané. Znovu se načetl data.json z repozitáře.');
+  setMessage(shouldUseBackend ? 'Lokální kopie smazaná. Znovu se načítají data z backendu.' : 'Lokální kopie smazaná. Znovu se načetl data.json z GitHubu.');
 }
 
 function createInlineEditor() {

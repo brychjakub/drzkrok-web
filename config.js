@@ -1,7 +1,7 @@
-// Produkční varianta používá PythonAnywhere backend jako jediné sdílené úložiště.
-// Pokud web otevíráš přímo z PythonAnywhere, nech apiBaseUrl prázdné.
-// Pokud web otevíráš z GitHub Pages, doplň sem adresu backendu, např. 'https://tvoje-jmeno.pythonanywhere.com'.
+// Firemní sítě můžou blokovat API/backendy. Výchozí režim je proto čistý GitHub Pages.
+// Zdroj pravdy je data.json v repozitáři; změny se projeví všude až po commitu/pushi data.json.
 window.DRZKROK_CONFIG = {
-  useBackend: true,
+  useBackend: false,
+  useLocalStorage: false,
   apiBaseUrl: '',
 };

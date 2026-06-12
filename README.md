@@ -1,55 +1,59 @@
-# Drž krok – sdílený projektový dashboard
+# Drž krok – GitHub projektový dashboard
 
 Jednoduchý osobní dashboard pro projekty. Aktuální startovací projekt je „Výlet na ferraty“ v termínu **31. 7. – 2. 8. 2026**.
 
-Cíl: rychle vidět, co teď řeším, co je později, co je hotovo, mapu, odkazy a screenshoty. Data se v produkci načítají z PythonAnywhere backendu, aby byla stejná na mobilu, firemním PC i dalších zařízeních.
+Cíl: rychle vidět, co teď řeším, co je později, co je hotovo, mapu, odkazy a screenshoty. Výchozí produkční režim je čistý **GitHub Pages bez backendu**, aby fungoval i tam, kde firemní politika blokuje API komunikaci.
 
-## PythonAnywhere / backend verze
+## Jak se data synchronizují bez backendu
 
-Produkční nastavení používá backend jako jedno sdílené úložiště:
+Čistě na GitHubu nejde zapisovat změny ze stránky přímo do repozitáře bez API nebo backendu. Proto je zdroj pravdy soubor `data.json` v repozitáři:
 
-- `config.js` má `useBackend: true`,
-- dashboard načítá data přes `/api/dashboard`,
-- tlačítko **Uložit** zapisuje změny zpět přes backend,
-- lokální `localStorage` už není zdroj pravdy pro dashboardová data.
+- každé zařízení načítá při otevření aktuální `data.json`,
+- běžný `localStorage` není ve výchozím režimu zdroj pravdy,
+- změny se projeví na mobilu, firemním PC i dalších zařízeních až po commitu/pushi nového `data.json`,
+- tlačítko **Uložit** stáhne připravený `data.json`, který nahraješ/commitneš do GitHubu.
 
-Pokud na dvou zařízeních vidíš rozdílné věci, typicky je to tím, že starší statická verze ukládala úpravy jen do `localStorage` konkrétního prohlížeče. Backend verze bere data ze sdíleného souboru/úložiště na PythonAnywhere.
+Prakticky to znamená: web je všude stejný podle posledního commitu v GitHubu. Není to živá databáze, ale je to spolehlivé bez PythonAnywhere a bez API komunikace.
 
-## Statická GitHub Pages nouzová varianta
+## Doporučený workflow
 
-GitHub Pages neumí zapisovat soubory na server. Pokud bys někdy potřeboval čistě statický režim, přepni v `config.js` `useBackend` na `false`. Pak dashboard ukládá změny jen do `localStorage` v konkrétním prohlížeči.
+1. Otevři dashboard na GitHub Pages.
+2. Klikni **Upravit → Zapnout úpravy**.
+3. Proveď změny.
+4. Klikni **Uložit**.
+5. Prohlížeč stáhne nový `data.json`.
+6. V GitHubu nahraď původní `data.json` tím staženým souborem a commitni změnu.
+7. Po doběhnutí GitHub Pages se stejná data načtou na všech zařízeních.
 
+Alternativa bez editace na stránce: otevři `data.json` přímo v GitHubu, klikni na editaci souboru, uprav JSON a commitni.
 
-## Když vidíš GitHub Pages 404 místo dat
+## Volitelný lokální režim pro jeden prohlížeč
 
-Chyba s dlouhým HTML textem `There isn't a GitHub Pages site here` znamená, že frontend zkusil načíst `/api/dashboard` na GitHub Pages. GitHub Pages ale neumí spouštět Flask backend, takže tam žádné `/api/dashboard` není.
+Kdybys někdy chtěl dočasně ukládat změny jen v jednom prohlížeči, nastav v `config.js`:
 
-Postup:
+```js
+window.DRZKROK_CONFIG = {
+  useBackend: false,
+  useLocalStorage: true,
+  apiBaseUrl: '',
+};
+```
 
-1. Zjisti veřejnou URL PythonAnywhere aplikace, například `https://tvoje-jmeno.pythonanywhere.com`.
-2. Pokud chceš otevírat web přes GitHub Pages, nastav v `config.js`:
+To ale znovu znamená, že mobil a firemní PC můžou vidět rozdílná data. Pro synchronizaci mezi zařízeními nech `useLocalStorage: false`.
 
-   ```js
-   window.DRZKROK_CONFIG = {
-     useBackend: true,
-     apiBaseUrl: 'https://tvoje-jmeno.pythonanywhere.com',
-   };
-   ```
+## Volitelný backend režim
 
-3. Commitni a pushni změnu `config.js`.
-4. Na PythonAnywhere otevři **Web → Reload**, aby běžela aktuální appka.
-5. Na mobilu i PC otevři stejnou GitHub Pages URL a případně tvrdě obnov stránku, aby se načetl nový `config.js`.
-6. Alternativa: GitHub Pages vůbec nepoužívej a otevírej přímo PythonAnywhere URL. V tom případě může `apiBaseUrl` zůstat prázdné, protože frontend i API běží na stejné doméně.
+V repozitáři zůstává i Flask backend pro PythonAnywhere. Pokud bys ho někdy chtěl znovu použít, nastav v `config.js`:
 
-## Když vidíš `Failed to fetch`
+```js
+window.DRZKROK_CONFIG = {
+  useBackend: true,
+  useLocalStorage: false,
+  apiBaseUrl: 'https://tvoje-jmeno.pythonanywhere.com',
+};
+```
 
-`Failed to fetch` znamená, že prohlížeč se k backendu vůbec nedostal nebo ho zablokoval ještě před čtením odpovědi. Zkontroluj postupně:
-
-1. `apiBaseUrl` v `config.js` je skutečná PythonAnywhere adresa včetně `https://`, ne ukázkový text.
-2. PythonAnywhere web appka je spuštěná a po posledním commitu/reloadu opravdu běží.
-3. V prohlížeči jde otevřít `https://tvoje-jmeno.pythonanywhere.com/api/health` a vrátí `{"ok": true}`.
-4. Pokud frontend běží na GitHub Pages a API na PythonAnywhere, nastav na PythonAnywhere proměnnou `DRZKROK_ALLOWED_ORIGIN` na přesnou URL frontendu, například `https://uzivatel.github.io`.
-5. Po změně proměnných na PythonAnywhere klikni **Reload**.
+Ve firemní síti to ale může selhat, pokud politika blokuje API komunikaci.
 
 ## Co jde upravit přímo na stránce
 
@@ -65,7 +69,7 @@ V edit módu můžeš:
 - přidat/smazat obrázky nebo screenshoty,
 - exportovat/importovat celý JSON.
 
-Po změnách klikni **Uložit**.
+Po změnách klikni **Uložit** a commitni stažený `data.json`.
 
 ## Odkazy bez JSONu
 
@@ -82,7 +86,7 @@ Můžeš napsat i jen `maps.google.com`; při zobrazení se z toho udělá klika
 
 V panelu **Upravit → Nahrát obrázek** vybereš soubor a klikneš **Přidat obrázek**.
 
-Obrázek se vloží do dashboardových dat jako data URL a po kliknutí na **Uložit** se v backend režimu uloží na PythonAnywhere společně s projektem. Pro pár screenshotů je to v pohodě. Kdyby obrázků bylo hodně, je lepší dávat do dashboardu běžné URL odkazy na obrázky uložené jinde.
+Obrázek se vloží do dashboardových dat jako data URL. Po kliknutí na **Uložit** se stáhne nový `data.json`; po commitu do GitHubu bude obrázek dostupný i na ostatních zařízeních. Pro pár screenshotů je to v pohodě. Kdyby obrázků bylo hodně, je lepší dávat do dashboardu běžné URL odkazy na obrázky uložené jinde.
 
 ## Lokální spuštění
 
@@ -98,17 +102,11 @@ Pak otevři:
 http://127.0.0.1:5000/
 ```
 
-Pokud chceš jen nouzově statickou verzi bez backendu, přepni v `config.js` `useBackend` na `false` a spusť:
-
-```bash
-python3 -m http.server 4173
-```
-
 ## Soubory
 
 - `index.html` – stránka dashboardu.
 - `style.css` – vzhled.
-- `script.js` – vykreslení, editace a ukládání přes backend nebo statický fallback.
-- `data.json` – výchozí data pro statický fallback.
-- `config.js` – přepínač backend/statický režim.
-- `pythonanywhere/app.py` – Flask backend pro sdílená data, přihlášení a uploady.
+- `script.js` – vykreslení, editace a export/import dat.
+- `data.json` – hlavní zdroj dat pro GitHub Pages režim.
+- `config.js` – přepínač GitHub/localStorage/backend režimu.
+- `pythonanywhere/app.py` – volitelný Flask backend, pokud ho někdy znovu zapneš.
