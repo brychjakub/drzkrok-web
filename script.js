@@ -5,6 +5,8 @@ const apiBaseUrl = (appConfig.apiBaseUrl || '').replace(/\/$/, '');
 const authTokenKey = 'drzkrokAuthToken';
 const staticHostingDomains = ['github.io', 'pages.dev', 'netlify.app', 'vercel.app'];
 const isLikelyStaticHosting = staticHostingDomains.some((domain) => window.location.hostname.endsWith(domain));
+const backendOrigin = apiBaseUrl ? new URL(apiBaseUrl, window.location.href).origin : window.location.origin;
+const backendIsCrossOrigin = backendOrigin !== window.location.origin;
 
 const stateMap = {
   now: { listId: 'now-list', label: 'Teď' },
@@ -520,6 +522,17 @@ function getBackendSetupHint() {
   return 'Zkontroluj, že web otevíráš z PythonAnywhere backendu nebo že je v config.js vyplněné apiBaseUrl.';
 }
 
+function getNetworkErrorHint(error) {
+  const target = apiBaseUrl || window.location.origin;
+  const baseHint = `Backend ${target} není dostupný z téhle stránky.`;
+
+  if (backendIsCrossOrigin) {
+    return `${baseHint} Zkontroluj přesnou PythonAnywhere URL, že web appka na PythonAnywhere běží/reloadla se, používá HTTPS a že DRZKROK_ALLOWED_ORIGIN povoluje ${window.location.origin}. Původní chyba: ${error.message}.`;
+  }
+
+  return `${baseHint} Pokud web běží na GitHub Pages nebo jiné statické doméně, doplň v config.js apiBaseUrl na PythonAnywhere. Původní chyba: ${error.message}.`;
+}
+
 async function fetchBackend(path, options = {}) {
   const setupHint = getBackendSetupHint();
 
@@ -527,11 +540,17 @@ async function fetchBackend(path, options = {}) {
     throw new Error(setupHint);
   }
 
-  const response = await fetch(`${apiBaseUrl}${path}`, {
-    cache: 'no-store',
-    credentials: 'include',
-    ...withAuthHeaders(options),
-  });
+  let response;
+
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      cache: 'no-store',
+      credentials: backendIsCrossOrigin ? 'omit' : 'include',
+      ...withAuthHeaders(options),
+    });
+  } catch (error) {
+    throw new Error(getNetworkErrorHint(error));
+  }
 
   if (!response.ok) {
     const contentType = response.headers.get('content-type') || '';

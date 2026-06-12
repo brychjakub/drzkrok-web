@@ -37,8 +37,19 @@ Postup:
    ```
 
 3. Commitni a pushni změnu `config.js`.
-4. Na mobilu i PC otevři stejnou GitHub Pages URL a případně tvrdě obnov stránku, aby se načetl nový `config.js`.
-5. Alternativa: GitHub Pages vůbec nepoužívej a otevírej přímo PythonAnywhere URL. V tom případě může `apiBaseUrl` zůstat prázdné, protože frontend i API běží na stejné doméně.
+4. Na PythonAnywhere otevři **Web → Reload**, aby běžela aktuální appka.
+5. Na mobilu i PC otevři stejnou GitHub Pages URL a případně tvrdě obnov stránku, aby se načetl nový `config.js`.
+6. Alternativa: GitHub Pages vůbec nepoužívej a otevírej přímo PythonAnywhere URL. V tom případě může `apiBaseUrl` zůstat prázdné, protože frontend i API běží na stejné doméně.
+
+## Když vidíš `Failed to fetch`
+
+`Failed to fetch` znamená, že prohlížeč se k backendu vůbec nedostal nebo ho zablokoval ještě před čtením odpovědi. Zkontroluj postupně:
+
+1. `apiBaseUrl` v `config.js` je skutečná PythonAnywhere adresa včetně `https://`, ne ukázkový text.
+2. PythonAnywhere web appka je spuštěná a po posledním commitu/reloadu opravdu běží.
+3. V prohlížeči jde otevřít `https://tvoje-jmeno.pythonanywhere.com/api/health` a vrátí `{"ok": true}`.
+4. Pokud frontend běží na GitHub Pages a API na PythonAnywhere, nastav na PythonAnywhere proměnnou `DRZKROK_ALLOWED_ORIGIN` na přesnou URL frontendu, například `https://uzivatel.github.io`.
+5. Po změně proměnných na PythonAnywhere klikni **Reload**.
 
 ## Co jde upravit přímo na stránce
 

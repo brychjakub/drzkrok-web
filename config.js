@@ -3,5 +3,5 @@
 // Pokud web otevíráš z GitHub Pages, doplň sem adresu backendu, např. 'https://tvoje-jmeno.pythonanywhere.com'.
 window.DRZKROK_CONFIG = {
   useBackend: true,
-  apiBaseUrl: 'https://brych.pythonanywhere.com',
+  apiBaseUrl: '',
 };
