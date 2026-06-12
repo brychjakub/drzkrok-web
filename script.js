@@ -1,4 +1,13 @@
 const STORAGE_KEY = 'drzkrok-dashboard-data';
+const appConfig = window.DRZKROK_CONFIG || {};
+const shouldUseBackend = appConfig.useBackend === true;
+const shouldUseLocalStorage = appConfig.useLocalStorage === true;
+const apiBaseUrl = (appConfig.apiBaseUrl || '').replace(/\/$/, '');
+const authTokenKey = 'drzkrokAuthToken';
+const staticHostingDomains = ['github.io', 'pages.dev', 'netlify.app', 'vercel.app'];
+const isLikelyStaticHosting = staticHostingDomains.some((domain) => window.location.hostname.endsWith(domain));
+const backendOrigin = apiBaseUrl ? new URL(apiBaseUrl, window.location.href).origin : window.location.origin;
+const backendIsCrossOrigin = backendOrigin !== window.location.origin;
 
 const stateMap = {
   now: { listId: 'now-list', label: 'Teď' },
@@ -213,7 +222,7 @@ function renderImages(images = []) {
 
     return `
       ${imageEditor ? `<div class="image-edit-grid">${imageEditor}</div>` : '<p class="empty-links">Zatím žádné obrázky ani screenshoty.</p>'}
-      <p class="edit-hint">Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ zůstane uložený v tomhle prohlížeči.</p>
+      <p class="edit-hint">${shouldUseBackend ? 'Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ zůstane uložený na backendu.' : 'Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ stáhni data.json a commitni ho do GitHubu.'}</p>
     `;
   }
 
@@ -486,6 +495,83 @@ async function fetchJson(url, sourceName) {
   return response.json();
 }
 
+function getAuthToken() {
+  return localStorage.getItem(authTokenKey) || '';
+}
+
+function withAuthHeaders(options = {}) {
+  const headers = new Headers(options.headers || {});
+  const token = getAuthToken();
+
+  if (token && !headers.has('Authorization')) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  return {
+    ...options,
+    headers,
+  };
+}
+
+function getBackendSetupHint() {
+  if (apiBaseUrl) return '';
+
+  if (isLikelyStaticHosting) {
+    return 'Web běží na statickém hostingu, takže /api/dashboard neexistuje. V config.js doplň apiBaseUrl na PythonAnywhere, nebo otevírej web přímo z PythonAnywhere.';
+  }
+
+  return 'Zkontroluj, že web otevíráš z PythonAnywhere backendu nebo že je v config.js vyplněné apiBaseUrl.';
+}
+
+function getNetworkErrorHint(error) {
+  const target = apiBaseUrl || window.location.origin;
+  const baseHint = `Backend ${target} není dostupný z téhle stránky.`;
+
+  if (backendIsCrossOrigin) {
+    return `${baseHint} Zkontroluj přesnou PythonAnywhere URL, že web appka na PythonAnywhere běží/reloadla se, používá HTTPS a že DRZKROK_ALLOWED_ORIGIN povoluje ${window.location.origin}. Původní chyba: ${error.message}.`;
+  }
+
+  return `${baseHint} Pokud web běží na GitHub Pages nebo jiné statické doméně, doplň v config.js apiBaseUrl na PythonAnywhere. Původní chyba: ${error.message}.`;
+}
+
+async function fetchBackend(path, options = {}) {
+  const setupHint = getBackendSetupHint();
+
+  if (setupHint && isLikelyStaticHosting) {
+    throw new Error(setupHint);
+  }
+
+  let response;
+
+  try {
+    response = await fetch(`${apiBaseUrl}${path}`, {
+      cache: 'no-store',
+      credentials: backendIsCrossOrigin ? 'omit' : 'include',
+      ...withAuthHeaders(options),
+    });
+  } catch (error) {
+    throw new Error(getNetworkErrorHint(error));
+  }
+
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type') || '';
+    const text = await response.text();
+
+    if (contentType.includes('text/html') || /^\s*<!doctype html/i.test(text) || /^\s*<html/i.test(text)) {
+      throw new Error(setupHint || `Backend nevrátil JSON, ale HTML stránku se stavem ${response.status}. Pravděpodobně voláš špatnou adresu API.`);
+    }
+
+    throw new Error(text || `Backend vrátil stav ${response.status}.`);
+  }
+
+  return response.json();
+}
+
+async function loadFromBackend() {
+  const data = await fetchBackend('/api/dashboard');
+  return validateData(data, 'Backend');
+}
+
 async function loadFromLocalFile() {
   const data = await fetchJson('data.json', 'Soubor data.json');
   return validateData(data, 'Soubor data.json');
@@ -516,10 +602,16 @@ function switchProject(projectId) {
 
   dashboardData.activeProjectId = project.id;
   refreshDashboard(dashboardData);
-  saveToStorage();
+
+  if (shouldUseBackend) {
+    persistDashboard({ silent: true }).catch((error) => {
+      setMessage(`Přepnutí projektu se nepodařilo uložit na backend: ${error.message}`, 'error');
+    });
+  } else if (shouldUseLocalStorage) {
+    saveToStorage();
+  }
+
   clearTimeout(saveTimer);
-  setMessage(`Otevřený projekt: ${project.title || 'Bez názvu'}.`);
-  saveTimer = setTimeout(clearMessage, 2200);
 }
 
 function createEmptyProject(title = '') {
@@ -581,14 +673,15 @@ function deleteProject(projectId) {
 }
 
 async function loadDashboard() {
-  setMessage('Načítám projekt…');
+  setMessage(shouldUseBackend ? 'Načítám projekt z backendu…' : 'Načítám projekt…');
 
   try {
-    const data = loadFromStorage() || await loadFromLocalFile();
+    const data = shouldUseBackend ? await loadFromBackend() : ((shouldUseLocalStorage && loadFromStorage()) || await loadFromLocalFile());
     refreshDashboard(data);
     clearMessage();
   } catch (error) {
-    setMessage(`Dashboard se nepodařilo načíst. Detail: ${error.message}`, 'error');
+    const hint = shouldUseBackend ? ' Zkontroluj PythonAnywhere backend a přihlášení.' : '';
+    setMessage(`Dashboard se nepodařilo načíst. Detail: ${error.message}.${hint}`, 'error');
   }
 }
 
@@ -730,11 +823,36 @@ function bindInlineEditing() {
   });
 }
 
-function saveDashboard() {
+async function persistDashboard({ silent = false } = {}) {
+  if (!dashboardData) return false;
+
+  if (!shouldUseBackend) {
+    if (shouldUseLocalStorage) saveToStorage();
+    downloadJson(dashboardData);
+    return true;
+  }
+
+  const savedData = await fetchBackend('/api/dashboard', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(dashboardData),
+  });
+
+  refreshDashboard(validateData(savedData, 'Backend'));
+  if (!silent) localStorage.removeItem(STORAGE_KEY);
+  return true;
+}
+
+async function saveDashboard() {
   clearTimeout(saveTimer);
-  saveToStorage();
-  setMessage('Uloženo v tomhle prohlížeči. Pro přenos na jiné zařízení použij Export JSON.');
-  saveTimer = setTimeout(clearMessage, 2600);
+
+  try {
+    await persistDashboard();
+    setMessage(shouldUseBackend ? 'Uloženo na backendu. Změny uvidíš i na mobilu a firemním PC.' : 'Stažený data.json commitni do GitHubu. Po pushi se stejná data načtou na všech zařízeních.');
+    saveTimer = setTimeout(clearMessage, 2600);
+  } catch (error) {
+    setMessage(`Uložení selhalo: ${error.message}`, 'error');
+  }
 }
 
 function fileToDataUrl(file) {
@@ -770,26 +888,32 @@ async function uploadImage(panel) {
   }
 }
 
-function exportJson() {
-  const blob = new Blob([JSON.stringify(dashboardData, null, 2)], { type: 'application/json' });
+function downloadJson(payload, filename = 'data.json') {
+  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `drzkrok-dashboard-${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = filename;
+  document.body.append(link);
   link.click();
+  link.remove();
   URL.revokeObjectURL(url);
+}
+
+function exportJson() {
+  downloadJson(dashboardData, `drzkrok-dashboard-${new Date().toISOString().slice(0, 10)}.json`);
 }
 
 function importJson(file) {
   if (!file) return;
 
   const reader = new FileReader();
-  reader.onload = () => {
+  reader.onload = async () => {
     try {
       const data = validateData(JSON.parse(reader.result), 'Importovaný JSON');
       refreshDashboard(data);
-      saveDashboard();
-      setMessage('Import hotový a uložený v tomhle prohlížeči.');
+      await persistDashboard();
+      setMessage(shouldUseBackend ? 'Import hotový a uložený na backendu.' : 'Import hotový. Stažený data.json commitni do GitHubu, aby se projevil všude.');
     } catch (error) {
       setMessage(`Import selhal: ${error.message}`, 'error');
     }
@@ -800,7 +924,7 @@ function importJson(file) {
 function resetLocalData() {
   localStorage.removeItem(STORAGE_KEY);
   loadDashboard();
-  setMessage('Lokální úpravy smazané. Znovu se načetl data.json z repozitáře.');
+  setMessage(shouldUseBackend ? 'Lokální kopie smazaná. Znovu se načítají data z backendu.' : 'Lokální kopie smazaná. Znovu se načetl data.json z GitHubu.');
 }
 
 function createInlineEditor() {
