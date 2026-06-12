@@ -20,12 +20,53 @@ const savedApiUrl = localStorage.getItem('drzkrokApiBaseUrl');
 const savedUsername = localStorage.getItem('drzkrokAdminUsername');
 let isAuthenticated = false;
 let authConfigured = false;
+const shouldUseBackend = adminConfig.useBackend !== false;
+const authTokenKey = 'drzkrokAuthToken';
 
 apiInput.value = savedApiUrl || adminConfig.apiBaseUrl || '';
 usernameInput.value = savedUsername || '';
 
 function cleanApiUrl() {
   return apiInput.value.trim().replace(/\/$/, '');
+}
+
+function getAuthToken() {
+  return localStorage.getItem(authTokenKey) || '';
+}
+
+function rememberAuthToken(token) {
+  if (token) localStorage.setItem(authTokenKey, token);
+}
+
+function withAuthHeaders(options = {}) {
+  const headers = new Headers(options.headers || {});
+  const token = getAuthToken();
+
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`);
+  }
+
+  return { ...options, headers };
+}
+
+function downloadJson(payload) {
+  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'data.json';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function fetchLocalData() {
+  const response = await fetch('data.json', { cache: 'no-store' });
+  if (!response.ok) {
+    throw new Error(`Soubor data.json vrátil stav ${response.status}.`);
+  }
+  return response.json();
 }
 
 function setMessage(text, type = 'info') {
@@ -75,9 +116,10 @@ function validatePayload(payload) {
 
 async function fetchBackend(path, options = {}) {
   const apiUrl = cleanApiUrl();
+  const requestOptions = withAuthHeaders(options);
   const response = await fetch(`${apiUrl}${path}`, {
     credentials: 'include',
-    ...options,
+    ...requestOptions,
   });
 
   if (!response.ok) {
@@ -91,6 +133,16 @@ async function fetchBackend(path, options = {}) {
 
 function updateAuthUi() {
   if (!authStatus || !authFields) return;
+
+  if (!shouldUseBackend) {
+    authStatus.textContent = 'GitHub Pages je statický web. Data upravíš stažením nového data.json a commitem do repozitáře.';
+    authFields.hidden = true;
+    loginButton.hidden = true;
+    apiInput.disabled = true;
+    saveSettingsButton.hidden = true;
+    uploadButton.disabled = true;
+    return;
+  }
 
   if (!authConfigured) {
     authStatus.textContent = 'Přihlášení není nastavené na backendu.';
@@ -112,6 +164,11 @@ function updateAuthUi() {
 }
 
 async function refreshSession() {
+  if (!shouldUseBackend) {
+    updateAuthUi();
+    return;
+  }
+
   try {
     const session = await fetchBackend('/api/session');
     isAuthenticated = Boolean(session.authenticated);
@@ -141,12 +198,13 @@ async function login() {
       throw new Error('Vyplň uživatelské jméno i heslo.');
     }
 
-    await fetchBackend('/api/login', {
+    const loginResult = await fetchBackend('/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
     });
 
+    rememberAuthToken(loginResult.token);
     isAuthenticated = true;
     authConfigured = true;
     updateAuthUi();
@@ -158,22 +216,30 @@ async function login() {
 }
 
 async function loadData() {
-  setMessage('Načítám data z backendu…');
+  setMessage(shouldUseBackend ? 'Načítám data z backendu…' : 'Načítám data.json…');
 
   try {
-    const data = await fetchBackend('/api/dashboard');
+    const data = shouldUseBackend ? await fetchBackend('/api/dashboard') : await fetchLocalData();
     editor.value = JSON.stringify(validatePayload(data), null, 2);
-    saveSettings();
-    setMessage('Data načtená.');
+    if (shouldUseBackend) saveSettings();
+    setMessage(shouldUseBackend ? 'Data načtená.' : 'Data načtená z data.json. Po úpravě si stáhni nový soubor a commitni ho.');
   } catch (error) {
     setMessage(`Načtení selhalo: ${error.message}`, 'error');
   }
 }
 
 async function saveData() {
-  setMessage('Ukládám data…');
+  setMessage(shouldUseBackend ? 'Ukládám data…' : 'Připravuju data.json ke stažení…');
 
   try {
+    const payload = validatePayload(JSON.parse(editor.value));
+
+    if (!shouldUseBackend) {
+      downloadJson(payload);
+      setMessage('Stažený data.json nahraj/commitni do repozitáře. GitHub Pages se potom přegeneruje automaticky.');
+      return;
+    }
+
     if (!isAuthenticated) {
       await refreshSession();
     }
@@ -182,7 +248,6 @@ async function saveData() {
       throw new Error('Nejdřív se přihlaš.');
     }
 
-    const payload = validatePayload(JSON.parse(editor.value));
     const data = await fetchBackend('/api/dashboard', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -198,8 +263,14 @@ async function saveData() {
 }
 
 async function uploadImage() {
-  setMessage('Nahrávám obrázek…');
   uploadResult.textContent = '';
+
+  if (!shouldUseBackend) {
+    setMessage('GitHub Pages neumí přijímat uploady. Obrázek přidej do repozitáře a jeho cestu doplň do data.json.', 'error');
+    return;
+  }
+
+  setMessage('Nahrávám obrázek…');
 
   try {
     if (!isAuthenticated) {
@@ -257,9 +328,4 @@ saveSettingsButton.addEventListener('click', saveSettings);
 uploadButton.addEventListener('click', uploadImage);
 
 refreshSession();
-
-if (cleanApiUrl() || adminConfig.useBackend !== false) {
-  loadData();
-} else {
-  setMessage('Vyplň Backend URL z PythonAnywhere a klikni na „Načíst projekt“.');
-}
+loadData();

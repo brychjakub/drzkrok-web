@@ -4,6 +4,7 @@ const usernameInput = document.querySelector('#login-username');
 const passwordInput = document.querySelector('#login-password');
 const submitButton = document.querySelector('#login-submit');
 const message = document.querySelector('#login-message');
+const authTokenKey = 'drzkrokAuthToken';
 
 function setMessage(text, type = 'info') {
   message.textContent = text;
@@ -33,7 +34,9 @@ async function login() {
       throw new Error(text || `Backend vrátil stav ${response.status}.`);
     }
 
-    window.location.href = '/';
+    const result = await response.json();
+    if (result.token) localStorage.setItem(authTokenKey, result.token);
+    window.location.href = 'index.html';
   } catch (error) {
     setMessage(`Přihlášení selhalo: ${error.message}`, 'error');
   }
