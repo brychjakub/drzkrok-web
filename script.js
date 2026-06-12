@@ -888,14 +888,20 @@ async function uploadImage(panel) {
   }
 }
 
-function exportJson() {
-  const blob = new Blob([JSON.stringify(dashboardData, null, 2)], { type: 'application/json' });
+function downloadJson(payload, filename = 'data.json') {
+  const blob = new Blob([`${JSON.stringify(payload, null, 2)}\n`], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = url;
-  link.download = `drzkrok-dashboard-${new Date().toISOString().slice(0, 10)}.json`;
+  link.download = filename;
+  document.body.append(link);
   link.click();
+  link.remove();
   URL.revokeObjectURL(url);
+}
+
+function exportJson() {
+  downloadJson(dashboardData, `drzkrok-dashboard-${new Date().toISOString().slice(0, 10)}.json`);
 }
 
 function importJson(file) {
