@@ -10,11 +10,6 @@
 </head>
 <body>
   <main class="page-shell">
-    <header class="hero project-hero" aria-labelledby="page-title">
-      <h1 id="page-title">Drž krok</h1>
-      <p id="project-subtitle" class="subtitle">Jeden projekt. Žádný plánovač.</p>
-    </header>
-
     <div id="message" class="message" role="status" aria-live="polite">Načítám projekt…</div>
 
     <section id="project-overview" class="project-overview" aria-label="Přehled aktivního projektu"></section>
@@ -23,7 +18,6 @@
       <section class="column" aria-labelledby="now-title">
         <div class="column-head">
           <h2 id="now-title">Teď</h2>
-          <span class="column-note">co řeším</span>
         </div>
         <div id="now-list" class="card-list" data-state="now"></div>
       </section>
@@ -31,7 +25,6 @@
       <section class="column" aria-labelledby="later-title">
         <div class="column-head">
           <h2 id="later-title">Později</h2>
-          <span class="column-note">nechat spát</span>
         </div>
         <div id="later-list" class="card-list" data-state="later"></div>
       </section>
@@ -39,7 +32,6 @@
       <section class="column" aria-labelledby="done-title">
         <div class="column-head">
           <h2 id="done-title">Hotovo</h2>
-          <span class="column-note">neotevírat z nudy</span>
         </div>
         <div id="done-list" class="card-list" data-state="done"></div>
       </section>
@@ -48,7 +40,6 @@
     <section id="archive" class="archive" aria-label="Archiv projektů"></section>
   </main>
 
-  <footer class="footer">Méně systému. Více jasno.</footer>
 
   <script src="config.js"></script>
   <script src="script.js" defer></script>
