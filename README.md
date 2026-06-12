@@ -101,14 +101,16 @@ Obrázek se vloží do dashboardových dat jako data URL. Po kliknutí na **Ulo�
 
 ## Lokální spuštění
 
+Pro backend režim spusť Flask aplikaci z `pythonanywhere/app.py`:
+
 ```bash
-python3 -m http.server 4173
+python3 pythonanywhere/app.py
 ```
 
 Pak otevři:
 
 ```text
-http://127.0.0.1:4173/
+http://127.0.0.1:5000/
 ```
 
 ## Soubory
