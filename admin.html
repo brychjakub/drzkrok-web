@@ -18,7 +18,7 @@
 
     <section class="admin-panel" aria-labelledby="connection-title">
       <h2 id="connection-title">Připojení</h2>
-      <p class="help-text">Tahle stránka ukládá data přes PythonAnywhere backend. Veřejný dashboard jen čte.</p>
+      <p class="help-text">Na GitHub Pages tahle stránka načte data.json a při uložení stáhne novou verzi souboru. PythonAnywhere backend můžeš zapnout v config.js.</p>
 
       <label for="api-url">Backend URL</label>
       <input id="api-url" type="url" placeholder="https://tvojeuzivatelskejmeno.pythonanywhere.com" autocomplete="url" />
@@ -69,7 +69,7 @@
       <textarea id="json-editor" spellcheck="false" aria-label="JSON data projektu"></textarea>
 
       <div class="admin-actions">
-        <button id="save-button" class="admin-button" type="button">Uložit na backend</button>
+        <button id="save-button" class="admin-button" type="button">Stáhnout data.json</button>
         <a class="plain-link" href="index.html">Zpět na dashboard</a>
       </div>
     </section>
