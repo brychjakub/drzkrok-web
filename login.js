@@ -33,7 +33,7 @@ async function login() {
       throw new Error(text || `Backend vrátil stav ${response.status}.`);
     }
 
-    window.location.href = '/';
+    window.location.href = 'index.html';
   } catch (error) {
     setMessage(`Přihlášení selhalo: ${error.message}`, 'error');
   }

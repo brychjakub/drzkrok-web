@@ -421,6 +421,18 @@ async function loadFromLocalFile() {
   return validateData(data, 'Soubor data.json');
 }
 
+function downloadDashboardData() {
+  const blob = new Blob([`${JSON.stringify(dashboardData, null, 2)}\n`], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = 'data.json';
+  document.body.append(link);
+  link.click();
+  link.remove();
+  URL.revokeObjectURL(url);
+}
+
 function refreshDashboard(data) {
   dashboardData = data;
   activeProject = getActiveProject(data);
@@ -708,7 +720,7 @@ function updateAuthPanel(panel) {
   if (!status || !fields) return;
 
   if (!shouldUseBackend) {
-    status.textContent = 'Backend je vypnutý, změny půjdou jen lokálně.';
+    status.textContent = 'GitHub Pages je statický web. Úpravy si stáhneš jako data.json a nahraješ do repozitáře.';
     fields.hidden = true;
     return;
   }
@@ -786,14 +798,22 @@ async function loginEditor(panel) {
 
 async function saveDashboard(panel) {
   clearTimeout(saveTimer);
+
+  if (!shouldUseBackend) {
+    downloadDashboardData();
+    setMessage('Stažený data.json nahraj/commitni do repozitáře. GitHub Pages se pak přegeneruje automaticky.');
+    saveTimer = setTimeout(clearMessage, 5000);
+    return;
+  }
+
   setMessage('Ukládám změny…');
 
   try {
-    if (shouldUseBackend && !isAuthenticated) {
+    if (!isAuthenticated) {
       await refreshAuthStatus(panel);
     }
 
-    if (shouldUseBackend && authConfigured && !isAuthenticated) {
+    if (authConfigured && !isAuthenticated) {
       throw new Error('Nejdřív se přihlaš.');
     }
 
@@ -815,14 +835,19 @@ async function saveDashboard(panel) {
 }
 
 async function uploadImage(panel) {
+  if (!shouldUseBackend) {
+    setMessage('GitHub Pages neumí přijímat uploady. Obrázek přidej do repozitáře a jeho cestu doplň do data.json.', 'error');
+    return;
+  }
+
   setMessage('Nahrávám obrázek…');
 
   try {
-    if (shouldUseBackend && !isAuthenticated) {
+    if (!isAuthenticated) {
       await refreshAuthStatus(panel);
     }
 
-    if (shouldUseBackend && authConfigured && !isAuthenticated) {
+    if (authConfigured && !isAuthenticated) {
       throw new Error('Nejdřív se přihlaš.');
     }
 

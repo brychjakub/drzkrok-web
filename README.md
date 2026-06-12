@@ -14,8 +14,8 @@ Princip: žádná Jira, žádný plánovač. Jeden projekt, rychlé odkazy, mapa
 - Archiv starších projektů schovaný dole.
 - Rychlá editace přímo na hlavní stránce tlačítkem **Upravit**.
 - Pokročilejší JSON editace přes `admin.html`.
-- Flask backend pro PythonAnywhere.
-- Nasazení na PythonAnywhere stylem `git clone` a později jen `git pull`.
+- Statický provoz na GitHub Pages bez backendu.
+- Volitelný Flask backend pro PythonAnywhere, pokud budeš chtít znovu online editaci a uploady.
 
 ## Soubory
 
@@ -24,8 +24,8 @@ Princip: žádná Jira, žádný plánovač. Jeden projekt, rychlé odkazy, mapa
 - `index.html` – veřejný projektový dashboard.
 - `style.css` – minimalistický responzivní styl.
 - `script.js` – načítání projektu, vykreslení karet, mapy, obrázků, archivu a rychlá inline editace.
-- `data.json` – záložní lokální data, když backend nejede.
-- `config.js` – konfigurace API. Pro PythonAnywhere na stejné doméně může zůstat prázdné `apiBaseUrl`.
+- `data.json` – hlavní data pro GitHub Pages.
+- `config.js` – konfigurace provozu. Výchozí stav má `useBackend: false`, takže GitHub Pages čte přímo `data.json`.
 
 ### Admin
 
@@ -42,6 +42,27 @@ Princip: žádná Jira, žádný plánovač. Jeden projekt, rychlé odkazy, mapa
 - `pythonanywhere/requirements.txt` – závislosti.
 - `pythonanywhere/wsgi.py` – import Flask aplikace.
 
+
+## GitHub Pages
+
+Projekt je připravený jako statický web pro GitHub Pages. Výchozí `config.js` má vypnutý backend, takže homepage načítá data přímo z `data.json` a nevolá PythonAnywhere API.
+
+### Zapnutí Pages v GitHubu
+
+1. Pushni repozitář na GitHub.
+2. V repozitáři otevři **Settings → Pages**.
+3. Jako source vyber **GitHub Actions**.
+4. Workflow `.github/workflows/pages.yml` po pushi na `main` nahraje statické soubory na Pages.
+
+### Úprava dat na GitHub Pages
+
+GitHub Pages neumí zapisovat soubory přímo z prohlížeče. Máš dvě jednoduché možnosti:
+
+- upravit `data.json` přímo v GitHubu a commitnout změnu,
+- otevřít `admin.html`, upravit JSON, kliknout na **Stáhnout data.json** a stažený soubor nahrát/commitnout do repozitáře.
+
+Po commitu se Pages automaticky přegenerují.
+
 ## Lokální zobrazení bez backendu
 
 V kořeni projektu spusť:
@@ -56,7 +77,7 @@ Pak otevři:
 http://127.0.0.1:4173/
 ```
 
-Bez Flask backendu se stránka pokusí o API, spadne na fallback a ukáže lokální `data.json`.
+Bez Flask backendu stránka rovnou ukáže lokální `data.json`, stejně jako na GitHub Pages.
 
 ## Lokální spuštění s backendem
 
@@ -211,7 +232,7 @@ Když PythonAnywhere servíruje i frontend, otevři:
 https://tvojeuzivatelskejmeno.pythonanywhere.com/
 ```
 
-`config.js` může zůstat takhle:
+Pro PythonAnywhere backend nastav `config.js` takhle:
 
 ```js
 window.DRZKROK_CONFIG = {
@@ -220,7 +241,7 @@ window.DRZKROK_CONFIG = {
 };
 ```
 
-Prázdné `apiBaseUrl` znamená: volej API na stejné doméně.
+Pro GitHub Pages naopak nech výchozí `useBackend: false`. Prázdné `apiBaseUrl` má smysl hlavně u PythonAnywhere backendu na stejné doméně.
 
 ### 8. Jak pak dělat aktualizace kódu
 

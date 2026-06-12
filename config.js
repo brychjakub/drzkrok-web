@@ -1,6 +1,7 @@
 window.DRZKROK_CONFIG = {
-  // Když web běží z PythonAnywhere Flask aplikace, nech prázdné: API se volá na stejné doméně.
-  // Když frontend hostuješ jinde než backend, vyplň např. 'https://tvojeuzivatelskejmeno.pythonanywhere.com'.
+  // GitHub Pages je statický hosting, proto se veřejný dashboard načítá přímo z data.json.
+  // Pokud budeš chtít znovu použít PythonAnywhere backend, nastav useBackend na true
+  // a apiBaseUrl na adresu backendu (např. 'https://tvojeuzivatelskejmeno.pythonanywhere.com').
   apiBaseUrl: '',
-  useBackend: true,
+  useBackend: false,
 };
