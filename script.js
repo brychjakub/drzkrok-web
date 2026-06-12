@@ -8,7 +8,6 @@ const stateMap = {
 
 const message = document.querySelector('#message');
 const projectOverview = document.querySelector('#project-overview');
-const projectSubtitle = document.querySelector('#project-subtitle');
 const archive = document.querySelector('#archive');
 
 let dashboardData = null;
@@ -354,10 +353,6 @@ function renderProjectSwitcher(data) {
 
   return `
     <section class="project-switcher" aria-label="Přepínač projektů">
-      <div>
-        <p class="eyebrow">projekty</p>
-        <h2>Přepni se, nebo založ další</h2>
-      </div>
       <div class="project-tabs">${buttons}</div>
     </section>
   `;
@@ -365,13 +360,11 @@ function renderProjectSwitcher(data) {
 
 function renderProject(project) {
   document.title = `${project.title || 'Projekt'} | Drž krok`;
-  projectSubtitle.innerHTML = renderEditableText(project.subtitle || 'Jeden projekt. Žádný plánovač.', 'project.subtitle');
 
   projectOverview.innerHTML = `
     ${renderProjectSwitcher(dashboardData)}
     <article class="project-card${editMode ? ' is-editing' : ''}">
       <div class="project-main">
-        <p class="eyebrow">aktivní projekt</p>
         <h2>${renderEditableText(project.title || 'Bez názvu', 'project.title')}</h2>
         ${editMode ? renderEditableTextarea(project.summary, 'project.summary', 'Krátký popis projektu') : `<p class="project-summary">${escapeHtml(project.summary || '')}</p>`}
         <div class="project-meta">
@@ -398,7 +391,6 @@ function renderProject(project) {
     <section class="media-section" aria-labelledby="images-title">
       <div class="section-head">
         <h2 id="images-title">Obrázky / screenshoty</h2>
-        <span class="column-note">rychlé vizuální poznámky</span>
       </div>
       ${renderImages(project.images)}
     </section>
@@ -502,7 +494,6 @@ function createEmptyProject(title = '') {
     id: createProjectId(cleanTitle),
     status: 'active',
     title: cleanTitle,
-    subtitle: 'Jeden konkrétní projekt. Rychle vidět, co řešit.',
     dateRange: '',
     place: '',
     summary: 'Krátký dashboard k projektu: příprava, odložené věci, hotovo, mapa, odkazy a screenshoty.',
@@ -784,7 +775,6 @@ function createInlineEditor() {
     <button class="quick-edit-toggle" type="button">Upravit</button>
     <div class="quick-edit-panel" hidden>
       <h2>Rychlá úprava</h2>
-      <p>Statická GitHub Pages verze. Změny se ukládají do tohoto prohlížeče.</p>
       <div class="quick-actions">
         <button id="quick-edit-mode" type="button">Zapnout úpravy</button>
         <button id="quick-save" type="button">Uložit</button>
@@ -800,7 +790,6 @@ function createInlineEditor() {
         <label>Název nového projektu<input id="quick-project-title" placeholder="Třeba Dovolená 2026" /></label>
         <button id="quick-add-project" type="button">Vytvořit projekt</button>
         <button id="quick-delete-project" class="quick-danger-button" type="button">Smazat otevřený projekt</button>
-        <p class="edit-hint">Staré projekty zůstanou v přepínači nahoře. Přepnutí se uloží v tomhle prohlížeči. Mazání se ještě zeptá na potvrzení.</p>
       </details>
       <details>
         <summary>Přenos dat</summary>
@@ -808,7 +797,6 @@ function createInlineEditor() {
         <label>Import JSON<input id="quick-import-file" type="file" accept="application/json,.json" /></label>
         <button id="quick-reset" type="button">Smazat lokální úpravy</button>
       </details>
-      <p class="edit-hint">GitHub Pages neumí zapisovat na server. Export JSON použij pro zálohu nebo přenos mezi zařízeními.</p>
     </div>
   `;
   document.body.append(panel);
