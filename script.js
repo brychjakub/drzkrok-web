@@ -6,15 +6,50 @@ const stateMap = {
   done: { listId: 'done-list', label: 'Hotovo' },
 };
 
-const message = document.querySelector('#message');
-const projectOverview = document.querySelector('#project-overview');
-const archive = document.querySelector('#archive');
+const pageShell = document.querySelector('.page-shell') || document.body;
+const board = document.querySelector('.board');
+const message = document.querySelector('#message') || createMissingElement('div', {
+  id: 'message',
+  className: 'message',
+  role: 'status',
+  ariaLive: 'polite',
+  before: board,
+});
+const projectOverview = document.querySelector('#project-overview') || createMissingElement('section', {
+  id: 'project-overview',
+  className: 'project-overview',
+  ariaLabel: 'Přehled aktivního projektu',
+  before: board,
+});
+const archive = document.querySelector('#archive') || createMissingElement('section', {
+  id: 'archive',
+  className: 'archive',
+  ariaLabel: 'Archiv projektů',
+});
 
 let dashboardData = null;
 let activeProject = null;
 let editMode = false;
 let saveTimer = null;
 let quickEditorPanel = null;
+
+function createMissingElement(tagName, options = {}) {
+  const element = document.createElement(tagName);
+
+  if (options.id) element.id = options.id;
+  if (options.className) element.className = options.className;
+  if (options.role) element.setAttribute('role', options.role);
+  if (options.ariaLive) element.setAttribute('aria-live', options.ariaLive);
+  if (options.ariaLabel) element.setAttribute('aria-label', options.ariaLabel);
+
+  if (options.before && options.before.parentElement) {
+    options.before.parentElement.insertBefore(element, options.before);
+  } else {
+    pageShell.append(element);
+  }
+
+  return element;
+}
 
 function setMessage(text, type = 'info') {
   message.textContent = text;
