@@ -2,41 +2,47 @@
 
 Jednoduchý osobní dashboard pro projekty. Aktuální startovací projekt je „Výlet na ferraty“ v termínu **31. 7. – 2. 8. 2026**.
 
-Cíl: rychle vidět, co teď řeším, co je později, co je hotovo, mapu, odkazy a screenshoty. Výchozí produkční režim je čistý **GitHub Pages bez backendu**, aby fungoval i tam, kde firemní politika blokuje API komunikaci.
+Cíl: rychle vidět, co teď řeším, co je později, co je hotovo, mapu, odkazy a screenshoty a mít stejná data na mobilu i na firemním PC. Výchozí produkční režim je čistý **GitHub Pages + GitHub API**, bez PythonAnywhere backendu.
 
-## Jak se data synchronizují bez backendu
+## Jak se data synchronizují bez vlastního backendu
 
-Čistě na GitHubu nejde zapisovat změny ze stránky přímo do repozitáře bez API nebo backendu. Proto je zdroj pravdy soubor `data.json` v repozitáři:
+Zdroj pravdy je soubor `data.json` v GitHub repozitáři:
 
-- každé zařízení načítá při otevření aktuální `data.json`,
+- při otevření se web snaží načíst aktuální `data.json` přímo z GitHubu,
 - běžný `localStorage` není ve výchozím režimu zdroj pravdy,
-- změny se projeví na mobilu, firemním PC i dalších zařízeních až po commitu/pushi nového `data.json`,
-- tlačítko **Uložit** stáhne připravený `data.json`, který nahraješ/commitneš do GitHubu.
+- po kliknutí na **Uložit** se `data.json` commitne přímo do GitHubu přes GitHub API,
+- po doběhnutí GitHub Pages se stejná data načtou na mobilu, firemním PC i dalších zařízeních.
 
-Prakticky to znamená: web je všude stejný podle posledního commitu v GitHubu. Není to živá databáze, ale je to spolehlivé bez PythonAnywhere a bez API komunikace.
+Prakticky to znamená: není potřeba PythonAnywhere ani databáze. Je to pořád statický web, ale zápis řeší GitHub API commitem do `data.json`.
 
-## Jde to dynamicky čistě přes GitHub?
+## Co musíš udělat jednorázově
 
-Ano, ale ne jen pomocí jQuery nebo obyčejného JavaScriptu na GitHub Pages. GitHub Pages je statický hosting: umí poslat `index.html`, `script.js`, `style.css` a `data.json`, ale neumí sám od sebe přepsat soubor v repozitáři. K zápisu je vždy potřeba některá zapisovací vrstva:
+1. V GitHubu vytvoř **fine-grained personal access token**.
+2. Dej mu přístup jen k tomuhle repozitáři.
+3. Oprávnění stačí: **Contents: Read and write**.
+4. Token nikam necommituj a nedávej ho do `config.js`.
+5. Otevři dashboard, klikni **Upravit → Přenos dat → Nastavit GitHub token** a token vlož tam.
+6. Od té chvíle kliknutí na **Uložit** udělá commit do `data.json`.
 
-- **GitHub API** – stránka by přes `fetch` nebo jQuery poslala změnu do GitHubu a GitHub by udělal commit do `data.json`. Po technické stránce to jde bez vlastního backendu, ale už je to API komunikace a potřebuje přihlášení/token. Token se nesmí natvrdo uložit do veřejného `config.js`, protože by kdokoliv mohl zapisovat do repozitáře.
-- **GitHub Actions** – změnu by šlo poslat workflow, které přepíše `data.json` a commitne ho. I to ale potřebuje bezpečný způsob autorizace požadavku.
-- **Backend / serverless funkce** – bezpečnější klasická cesta, protože tajný token zůstane na serveru, ne v prohlížeči.
-- **Ruční commit staženého `data.json`** – současný nejbezpečnější režim bez backendu, bez tokenu v prohlížeči a bez externí API komunikace mimo načtení GitHub Pages.
+Token je uložený jen v konkrétním prohlížeči v `localStorage`. Na mobilu ho zadáš zvlášť, pokud chceš ukládat i z mobilu. Pro čtení token potřeba není.
 
-Doporučení: pokud firemní politika dovolí komunikaci na `api.github.com`, nejlepší „čistě GitHub“ automatizace je GitHub API s jemně omezeným tokenem pouze pro zápis do konkrétního repozitáře/souboru. Pokud firemní politika blokuje i API volání, automatický zápis ze statické stránky možný není; pak zůstává ruční commit nebo lokální režim jen pro jedno zařízení.
+## Proč ne GitHub Actions po kliknutí?
+
+Šlo by to, ale pořád by bylo potřeba volat GitHub API a mít token. Navíc by se musel JSON předávat do workflow nebo přes mezisoubor, což je křehčí a má limity velikosti. Pro tenhle web je jednodušší a přímější cesta: **kliknutí na Uložit zavolá GitHub Contents API a rovnou commitne `data.json`**.
+
+Pokud firemní politika blokuje i `api.github.com`, automatické ukládání z prohlížeče nepůjde žádnou čistě statickou cestou. Pak zbývá ruční export/commit nebo backend v síti, kterou firemní PC povolí.
 
 ## Doporučený workflow
 
 1. Otevři dashboard na GitHub Pages.
-2. Klikni **Upravit → Zapnout úpravy**.
-3. Proveď změny.
-4. Klikni **Uložit**.
-5. Prohlížeč stáhne nový `data.json`.
-6. V GitHubu nahraď původní `data.json` tím staženým souborem a commitni změnu.
-7. Po doběhnutí GitHub Pages se stejná data načtou na všech zařízeních.
+2. Klikni **Upravit → Přenos dat → Nastavit GitHub token** a jednorázově vlož token.
+3. Klikni **Zapnout úpravy**.
+4. Proveď změny.
+5. Klikni **Uložit**.
+6. Web commitne nový `data.json` do GitHubu.
+7. Po chvilce obnov stránku na ostatních zařízeních.
 
-Alternativa bez editace na stránce: otevři `data.json` přímo v GitHubu, klikni na editaci souboru, uprav JSON a commitni.
+Nouzová alternativa zůstává **Export JSON**: pokud GitHub API zrovna nejde, vyexportuj soubor ručně a nahraj ho do GitHubu přes webové rozhraní.
 
 ## Volitelný lokální režim pro jeden prohlížeč
 
@@ -45,12 +51,13 @@ Kdybys někdy chtěl dočasně ukládat změny jen v jednom prohlížeči, nasta
 ```js
 window.DRZKROK_CONFIG = {
   useBackend: false,
+  useGithubSync: false,
   useLocalStorage: true,
   apiBaseUrl: '',
 };
 ```
 
-To ale znovu znamená, že mobil a firemní PC můžou vidět rozdílná data. Pro synchronizaci mezi zařízeními nech `useLocalStorage: false`.
+To ale znovu znamená, že mobil a firemní PC můžou vidět rozdílná data. Pro synchronizaci mezi zařízeními nech `useGithubSync: true` a `useLocalStorage: false`.
 
 ## Volitelný backend režim
 
@@ -59,6 +66,7 @@ V repozitáři zůstává i Flask backend pro PythonAnywhere. Pokud bys ho někd
 ```js
 window.DRZKROK_CONFIG = {
   useBackend: true,
+  useGithubSync: false,
   useLocalStorage: false,
   apiBaseUrl: 'https://tvoje-jmeno.pythonanywhere.com',
 };
@@ -80,7 +88,7 @@ V edit módu můžeš:
 - přidat/smazat obrázky nebo screenshoty,
 - exportovat/importovat celý JSON.
 
-Po změnách klikni **Uložit** a commitni stažený `data.json`.
+Po změnách klikni **Uložit**. Ve výchozím režimu se `data.json` commitne do GitHubu automaticky přes uložený token.
 
 ## Odkazy bez JSONu
 
@@ -97,7 +105,7 @@ Můžeš napsat i jen `maps.google.com`; při zobrazení se z toho udělá klika
 
 V panelu **Upravit → Nahrát obrázek** vybereš soubor a klikneš **Přidat obrázek**.
 
-Obrázek se vloží do dashboardových dat jako data URL. Po kliknutí na **Uložit** se stáhne nový `data.json`; po commitu do GitHubu bude obrázek dostupný i na ostatních zařízeních. Pro pár screenshotů je to v pohodě. Kdyby obrázků bylo hodně, je lepší dávat do dashboardu běžné URL odkazy na obrázky uložené jinde.
+Obrázek se vloží do dashboardových dat jako data URL. Po kliknutí na **Uložit** se uloží do `data.json` v GitHubu a po doběhnutí GitHub Pages bude dostupný i na ostatních zařízeních. Pro pár screenshotů je to v pohodě. Kdyby obrázků bylo hodně, je lepší dávat do dashboardu běžné URL odkazy na obrázky uložené jinde.
 
 ## Lokální spuštění
 
@@ -117,7 +125,7 @@ http://127.0.0.1:5000/
 
 - `index.html` – stránka dashboardu.
 - `style.css` – vzhled.
-- `script.js` – vykreslení, editace a export/import dat.
+- `script.js` – vykreslení, editace, GitHub ukládání a export/import dat.
 - `data.json` – hlavní zdroj dat pro GitHub Pages režim.
 - `config.js` – přepínač GitHub/localStorage/backend režimu.
 - `pythonanywhere/app.py` – volitelný Flask backend, pokud ho někdy znovu zapneš.

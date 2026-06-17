@@ -1,13 +1,35 @@
 const STORAGE_KEY = 'drzkrok-dashboard-data';
 const appConfig = window.DRZKROK_CONFIG || {};
 const shouldUseBackend = appConfig.useBackend === true;
+const shouldUseGithubSync = appConfig.useGithubSync === true;
 const shouldUseLocalStorage = appConfig.useLocalStorage === true;
 const apiBaseUrl = (appConfig.apiBaseUrl || '').replace(/\/$/, '');
 const authTokenKey = 'drzkrokAuthToken';
+const githubTokenKey = 'drzkrokGithubToken';
 const staticHostingDomains = ['github.io', 'pages.dev', 'netlify.app', 'vercel.app'];
 const isLikelyStaticHosting = staticHostingDomains.some((domain) => window.location.hostname.endsWith(domain));
 const backendOrigin = apiBaseUrl ? new URL(apiBaseUrl, window.location.href).origin : window.location.origin;
 const backendIsCrossOrigin = backendOrigin !== window.location.origin;
+
+const githubApiBaseUrl = 'https://api.github.com';
+
+function inferGithubPagesRepository() {
+  const match = window.location.hostname.match(/^([^.]+)\.github\.io$/i);
+  if (!match) return { owner: '', repo: '' };
+
+  const owner = match[1];
+  const repo = window.location.pathname.split('/').filter(Boolean)[0] || `${owner}.github.io`;
+  return { owner, repo };
+}
+
+const inferredGithubRepository = inferGithubPagesRepository();
+const githubConfig = {
+  owner: appConfig.github?.owner || appConfig.githubOwner || inferredGithubRepository.owner,
+  repo: appConfig.github?.repo || appConfig.githubRepo || inferredGithubRepository.repo,
+  branch: appConfig.github?.branch || appConfig.githubBranch || 'main',
+  dataPath: appConfig.github?.dataPath || appConfig.githubDataPath || 'data.json',
+};
+const githubSyncConfigured = Boolean(githubConfig.owner && githubConfig.repo && githubConfig.branch && githubConfig.dataPath);
 
 const stateMap = {
   now: { listId: 'now-list', label: 'Teď' },
@@ -222,7 +244,7 @@ function renderImages(images = []) {
 
     return `
       ${imageEditor ? `<div class="image-edit-grid">${imageEditor}</div>` : '<p class="empty-links">Zatím žádné obrázky ani screenshoty.</p>'}
-      <p class="edit-hint">${shouldUseBackend ? 'Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ zůstane uložený na backendu.' : 'Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ stáhni data.json a commitni ho do GitHubu.'}</p>
+      <p class="edit-hint">${shouldUseBackend ? 'Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ zůstane uložený na backendu.' : (shouldUseGithubSync ? 'Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ se uloží do data.json v GitHubu.' : 'Obrázek přidáš v panelu „Upravit“. Po kliknutí na „Uložit“ stáhni data.json a commitni ho do GitHubu.')}</p>
     `;
   }
 
@@ -495,6 +517,143 @@ async function fetchJson(url, sourceName) {
   return response.json();
 }
 
+
+function getGithubToken() {
+  return localStorage.getItem(githubTokenKey) || '';
+}
+
+function setGithubToken(token) {
+  const cleanToken = String(token || '').trim();
+
+  if (cleanToken) {
+    localStorage.setItem(githubTokenKey, cleanToken);
+  } else {
+    localStorage.removeItem(githubTokenKey);
+  }
+}
+
+function ensureGithubToken() {
+  const existingToken = getGithubToken();
+  if (existingToken) return existingToken;
+
+  const token = window.prompt('Vlož GitHub fine-grained token s právem Contents: Read and write pro tento repozitář. Token se uloží jen do tohoto prohlížeče, ne do config.js.');
+  setGithubToken(token);
+  return getGithubToken();
+}
+
+function toBase64Utf8(value) {
+  const bytes = new TextEncoder().encode(value);
+  let binary = '';
+  const chunkSize = 0x8000;
+
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+
+  return btoa(binary);
+}
+
+function getGithubContentsUrl() {
+  if (!githubSyncConfigured) {
+    throw new Error('GitHub sync není nastavený. V config.js doplň github.owner a github.repo, nebo používej URL ve tvaru https://uživatel.github.io/repozitář/.');
+  }
+
+  const owner = encodeURIComponent(githubConfig.owner);
+  const repo = encodeURIComponent(githubConfig.repo);
+  const path = githubConfig.dataPath.split('/').map(encodeURIComponent).join('/');
+  return `${githubApiBaseUrl}/repos/${owner}/${repo}/contents/${path}`;
+}
+
+function getGithubRawUrl() {
+  if (!githubSyncConfigured) return '';
+
+  const owner = encodeURIComponent(githubConfig.owner);
+  const repo = encodeURIComponent(githubConfig.repo);
+  const branch = encodeURIComponent(githubConfig.branch);
+  const path = githubConfig.dataPath.split('/').map(encodeURIComponent).join('/');
+  return `https://raw.githubusercontent.com/${owner}/${repo}/${branch}/${path}`;
+}
+
+async function fetchGithub(pathOrUrl, options = {}) {
+  const { requireAuth = false, ...fetchOptions } = options;
+  const token = requireAuth ? ensureGithubToken() : getGithubToken();
+  if (requireAuth && !token) throw new Error('Bez GitHub tokenu nejde data.json commitnout automaticky.');
+
+  const headers = new Headers(fetchOptions.headers || {});
+  headers.set('Accept', 'application/vnd.github+json');
+  headers.set('X-GitHub-Api-Version', '2022-11-28');
+  if (token) headers.set('Authorization', `Bearer ${token}`);
+
+  const url = pathOrUrl.startsWith('http') ? pathOrUrl : `${githubApiBaseUrl}${pathOrUrl}`;
+  let response;
+
+  try {
+    response = await fetch(url, { ...fetchOptions, headers, cache: 'no-store' });
+  } catch (error) {
+    throw new Error(`GitHub API není dostupné z téhle sítě/prohlížeče. Původní chyba: ${error.message}.`);
+  }
+
+  if (!response.ok) {
+    const text = await response.text();
+    let detail = text;
+
+    try {
+      const payload = JSON.parse(text);
+      detail = payload.message || text;
+    } catch (_) {
+      // Necháme původní text odpovědi.
+    }
+
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(`GitHub odmítl zápis (${response.status}). Zkontroluj token a oprávnění Contents: Read and write. Detail: ${detail}`);
+    }
+
+    throw new Error(`GitHub API vrátilo stav ${response.status}: ${detail}`);
+  }
+
+  return response.json();
+}
+
+async function loadFromGithubRaw() {
+  const rawUrl = getGithubRawUrl();
+  if (!rawUrl) return loadFromLocalFile();
+
+  const data = await fetchJson(`${rawUrl}?t=${Date.now()}`, 'GitHub data.json');
+  return validateData(data, 'GitHub data.json');
+}
+
+async function saveToGithub() {
+  const contentsUrl = getGithubContentsUrl();
+  const currentFile = await fetchGithub(`${contentsUrl}?ref=${encodeURIComponent(githubConfig.branch)}`, { requireAuth: true });
+  const json = `${JSON.stringify(dashboardData, null, 2)}\n`;
+  const savedFile = await fetchGithub(contentsUrl, {
+    method: 'PUT',
+    requireAuth: true,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: 'Update dashboard data',
+      content: toBase64Utf8(json),
+      sha: currentFile.sha,
+      branch: githubConfig.branch,
+    }),
+  });
+
+  return savedFile;
+}
+
+function configureGithubToken() {
+  const token = window.prompt('Vlož GitHub fine-grained token s právem Contents: Read and write. Neuloží se do repozitáře, jen do tohoto prohlížeče.', getGithubToken());
+  if (token === null) return;
+
+  setGithubToken(token);
+  setMessage(getGithubToken() ? 'GitHub token je uložený v tomto prohlížeči.' : 'GitHub token je smazaný.');
+}
+
+function clearGithubToken() {
+  localStorage.removeItem(githubTokenKey);
+  setMessage('GitHub token je smazaný z tohoto prohlížeče.');
+}
+
 function getAuthToken() {
   return localStorage.getItem(authTokenKey) || '';
 }
@@ -676,7 +835,7 @@ async function loadDashboard() {
   setMessage(shouldUseBackend ? 'Načítám projekt z backendu…' : 'Načítám projekt…');
 
   try {
-    const data = shouldUseBackend ? await loadFromBackend() : ((shouldUseLocalStorage && loadFromStorage()) || await loadFromLocalFile());
+    const data = shouldUseBackend ? await loadFromBackend() : ((shouldUseLocalStorage && loadFromStorage()) || (shouldUseGithubSync && githubSyncConfigured ? await loadFromGithubRaw() : await loadFromLocalFile()));
     refreshDashboard(data);
     clearMessage();
   } catch (error) {
@@ -826,20 +985,26 @@ function bindInlineEditing() {
 async function persistDashboard({ silent = false } = {}) {
   if (!dashboardData) return false;
 
-  if (!shouldUseBackend) {
-    if (shouldUseLocalStorage) saveToStorage();
-    downloadJson(dashboardData);
+  if (shouldUseBackend) {
+    const savedData = await fetchBackend('/api/dashboard', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dashboardData),
+    });
+
+    refreshDashboard(validateData(savedData, 'Backend'));
+    if (!silent) localStorage.removeItem(STORAGE_KEY);
     return true;
   }
 
-  const savedData = await fetchBackend('/api/dashboard', {
-    method: 'PUT',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(dashboardData),
-  });
+  if (shouldUseGithubSync) {
+    await saveToGithub();
+    if (shouldUseLocalStorage) saveToStorage();
+    return true;
+  }
 
-  refreshDashboard(validateData(savedData, 'Backend'));
-  if (!silent) localStorage.removeItem(STORAGE_KEY);
+  if (shouldUseLocalStorage) saveToStorage();
+  downloadJson(dashboardData);
   return true;
 }
 
@@ -848,7 +1013,7 @@ async function saveDashboard() {
 
   try {
     await persistDashboard();
-    setMessage(shouldUseBackend ? 'Uloženo na backendu. Změny uvidíš i na mobilu a firemním PC.' : 'Stažený data.json commitni do GitHubu. Po pushi se stejná data načtou na všech zařízeních.');
+    setMessage(shouldUseBackend ? 'Uloženo na backendu. Změny uvidíš i na mobilu a firemním PC.' : (shouldUseGithubSync ? 'Uloženo do GitHubu. Za chvíli se změny načtou i na ostatních zařízeních.' : 'Stažený data.json commitni do GitHubu. Po pushi se stejná data načtou na všech zařízeních.'));
     saveTimer = setTimeout(clearMessage, 2600);
   } catch (error) {
     setMessage(`Uložení selhalo: ${error.message}`, 'error');
@@ -913,7 +1078,7 @@ function importJson(file) {
       const data = validateData(JSON.parse(reader.result), 'Importovaný JSON');
       refreshDashboard(data);
       await persistDashboard();
-      setMessage(shouldUseBackend ? 'Import hotový a uložený na backendu.' : 'Import hotový. Stažený data.json commitni do GitHubu, aby se projevil všude.');
+      setMessage(shouldUseBackend ? 'Import hotový a uložený na backendu.' : (shouldUseGithubSync ? 'Import hotový a uložený do GitHubu.' : 'Import hotový. Stažený data.json commitni do GitHubu, aby se projevil všude.'));
     } catch (error) {
       setMessage(`Import selhal: ${error.message}`, 'error');
     }
@@ -924,7 +1089,7 @@ function importJson(file) {
 function resetLocalData() {
   localStorage.removeItem(STORAGE_KEY);
   loadDashboard();
-  setMessage(shouldUseBackend ? 'Lokální kopie smazaná. Znovu se načítají data z backendu.' : 'Lokální kopie smazaná. Znovu se načetl data.json z GitHubu.');
+  setMessage(shouldUseBackend ? 'Lokální kopie smazaná. Znovu se načítají data z backendu.' : 'Lokální kopie smazaná. Znovu se načítá data.json z GitHubu.');
 }
 
 function createInlineEditor() {
@@ -954,6 +1119,8 @@ function createInlineEditor() {
         <summary>Přenos dat</summary>
         <button id="quick-export" type="button">Export JSON</button>
         <label>Import JSON<input id="quick-import-file" type="file" accept="application/json,.json" /></label>
+        <button id="quick-github-token" type="button">Nastavit GitHub token</button>
+        <button id="quick-clear-github-token" type="button">Smazat GitHub token</button>
         <button id="quick-reset" type="button">Smazat lokální úpravy</button>
       </details>
     </div>
@@ -971,6 +1138,8 @@ function createInlineEditor() {
   const exportButton = panel.querySelector('#quick-export');
   const importInput = panel.querySelector('#quick-import-file');
   const resetButton = panel.querySelector('#quick-reset');
+  const githubTokenButton = panel.querySelector('#quick-github-token');
+  const clearGithubTokenButton = panel.querySelector('#quick-clear-github-token');
 
   toggle.addEventListener('click', () => {
     editPanel.hidden = !editPanel.hidden;
@@ -995,6 +1164,13 @@ function createInlineEditor() {
   exportButton.addEventListener('click', exportJson);
   importInput.addEventListener('change', () => importJson(importInput.files[0]));
   resetButton.addEventListener('click', resetLocalData);
+  githubTokenButton.addEventListener('click', configureGithubToken);
+  clearGithubTokenButton.addEventListener('click', clearGithubToken);
+
+  if (!shouldUseGithubSync) {
+    githubTokenButton.hidden = true;
+    clearGithubTokenButton.hidden = true;
+  }
 
   quickEditorPanel = panel;
 }
